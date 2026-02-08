@@ -1,6 +1,6 @@
 .PHONY: build install dev dev-stop dev-status dev-logs dev-tail check pre-pr help
 
-BINARY := house-finder
+BINARY := hf
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -ldflags "-X github.com/evcraddock/house-finder/internal/cli.Version=$(VERSION)"
 SOCKET := ./.overmind.sock

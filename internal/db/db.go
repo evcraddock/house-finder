@@ -16,7 +16,7 @@ func DefaultPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("getting home directory: %w", err)
 	}
-	return filepath.Join(home, ".house-finder", "houses.db"), nil
+	return filepath.Join(home, ".config", "hf", "houses.db"), nil
 }
 
 // Open opens (or creates) a SQLite database at the given path,

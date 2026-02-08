@@ -22,7 +22,7 @@ var (
 // NewRootCmd creates the root cobra command with global flags.
 func NewRootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:           "house-finder",
+		Use:           "hf",
 		Short:         "Find and track houses for sale",
 		Long:          "A tool to find and track houses for sale. Add properties by address, rate them, leave comments, and browse via CLI or web UI.",
 		SilenceUsage:  true,
@@ -30,7 +30,7 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	root.PersistentFlags().StringVar(&flagFormat, "format", "text", "output format (text|json)")
-	root.PersistentFlags().StringVar(&flagDB, "db", "", "SQLite database path (default: ~/.house-finder/houses.db)")
+	root.PersistentFlags().StringVar(&flagDB, "db", "", "SQLite database path (default: ~/.config/hf/houses.db)")
 
 	root.AddCommand(
 		newAddCmd(),
