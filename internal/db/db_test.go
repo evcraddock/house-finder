@@ -247,8 +247,8 @@ func TestDefaultPath(t *testing.T) {
 	}
 
 	dir := filepath.Base(filepath.Dir(p))
-	if dir != ".house-finder" {
-		t.Errorf("expected directory .house-finder, got %s", dir)
+	if dir != "hf" {
+		t.Errorf("expected directory hf, got %s", dir)
 	}
 }
 

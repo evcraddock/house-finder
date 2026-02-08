@@ -22,34 +22,37 @@ cp .env.example .env
 make build
 ```
 
-This produces a `house-finder` binary in the project root.
+This produces an `hf` binary in the project root. Or `make install` to put it in `$GOPATH/bin`.
 
 ## Usage
 
 ```bash
 # Add a property (hits the API once)
-./house-finder add "123 Main St, City, ST 12345"
+hf add "123 Main St, City, ST 12345"
 
 # List all properties
-./house-finder list
+hf list
 
 # Show property details
-./house-finder show 1
+hf show 1
 
 # Rate a property (1-4, 4 is best)
-./house-finder rate 1 4
+hf rate 1 4
 
 # Add a comment
-./house-finder comment 1 "Great backyard"
+hf comment 1 "Great backyard"
 
 # List comments
-./house-finder comments 1
+hf comments 1
 
 # Start the web UI
-./house-finder serve
+hf serve
 
 # JSON output for AI agents
-./house-finder list --format json
+hf list --format json
+
+# Print version
+hf version
 ```
 
 ## Development

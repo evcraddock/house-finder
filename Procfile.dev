@@ -1,1 +1,2 @@
-app: make build && ./house-finder serve
+app: make build && ./hf serve
+
