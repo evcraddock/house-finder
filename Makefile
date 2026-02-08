@@ -6,10 +6,10 @@ LDFLAGS := -ldflags "-X github.com/evcraddock/house-finder/internal/cli.Version=
 SOCKET := ./.overmind.sock
 
 build: ## Build the binary
-	go build $(LDFLAGS) -o $(BINARY) ./cmd/house-finder
+	go build $(LDFLAGS) -o $(BINARY) ./cmd/hf
 
 install: ## Install to $GOPATH/bin
-	go install $(LDFLAGS) ./cmd/house-finder
+	go install $(LDFLAGS) ./cmd/hf
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
