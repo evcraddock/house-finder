@@ -1,6 +1,7 @@
 # Binary
 *.exe
 /bin/
+/house-finder
 
 # Build
 /dist/
