@@ -1,0 +1,243 @@
+package property
+
+import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+)
+
+// Repository provides CRUD operations for properties.
+type Repository struct {
+	db *sql.DB
+}
+
+// NewRepository creates a property repository.
+func NewRepository(db *sql.DB) *Repository {
+	return &Repository{db: db}
+}
+
+const insertSQL = `INSERT INTO properties
+	(address, mpr_id, realtor_url, price, bedrooms, bathrooms, sqft, lot_size, year_built, property_type, status, raw_json)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+const selectColumns = `id, address, mpr_id, realtor_url, price, bedrooms, bathrooms, sqft, lot_size, year_built, property_type, status, rating, raw_json, created_at, updated_at`
+
+// Insert adds a new property and returns it with its generated ID.
+func (r *Repository) Insert(p *Property) (*Property, error) {
+	result, err := r.db.Exec(insertSQL,
+		p.Address, p.MprID, p.RealtorURL,
+		p.Price, p.Bedrooms, p.Bathrooms, p.Sqft, p.LotSize,
+		p.YearBuilt, p.PropertyType, p.Status,
+		string(p.RawJSON),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("inserting property: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("getting insert id: %w", err)
+	}
+
+	return r.GetByID(id)
+}
+
+// GetByID returns a property by its ID.
+func (r *Repository) GetByID(id int64) (*Property, error) {
+	query := fmt.Sprintf("SELECT %s FROM properties WHERE id = ?", selectColumns)
+	row := r.db.QueryRow(query, id)
+
+	p, err := scanProperty(row)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("property %d not found", id)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("querying property %d: %w", id, err)
+	}
+
+	return p, nil
+}
+
+// ListOptions controls filtering for List.
+type ListOptions struct {
+	MinRating *int
+}
+
+// List returns all properties, optionally filtered.
+func (r *Repository) List(opts ListOptions) ([]*Property, error) {
+	query := fmt.Sprintf("SELECT %s FROM properties", selectColumns)
+	var args []interface{}
+
+	if opts.MinRating != nil {
+		query += " WHERE rating >= ?"
+		args = append(args, *opts.MinRating)
+	}
+
+	query += " ORDER BY created_at DESC"
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("listing properties: %w", err)
+	}
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = fmt.Errorf("closing rows: %w", closeErr)
+		}
+	}()
+
+	var properties []*Property
+	for rows.Next() {
+		p, err := scanProperty(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scanning property: %w", err)
+		}
+		properties = append(properties, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating properties: %w", err)
+	}
+
+	return properties, nil
+}
+
+// UpdateRating sets the rating (1-4) for a property.
+func (r *Repository) UpdateRating(id int64, rating int) error {
+	if rating < 1 || rating > 4 {
+		return fmt.Errorf("rating must be 1-4, got %d", rating)
+	}
+
+	result, err := r.db.Exec(
+		"UPDATE properties SET rating = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+		rating, id,
+	)
+	if err != nil {
+		return fmt.Errorf("updating rating: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("checking rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("property %d not found", id)
+	}
+
+	return nil
+}
+
+// Delete removes a property by ID. Comments cascade.
+func (r *Repository) Delete(id int64) error {
+	result, err := r.db.Exec("DELETE FROM properties WHERE id = ?", id)
+	if err != nil {
+		return fmt.Errorf("deleting property: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("checking rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("property %d not found", id)
+	}
+
+	return nil
+}
+
+// parseRawJSON extracts known fields from the raw API response.
+// It tries common field paths from the RapidAPI us-real-estate-listings response.
+func parseRawJSON(raw json.RawMessage) parsedFields {
+	var f parsedFields
+
+	// Try to parse the top-level structure
+	var data map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &data); err != nil {
+		return f
+	}
+
+	// The API response may nest under "data" or "property"
+	target := data
+	for _, key := range []string{"data", "property"} {
+		if nested, ok := target[key]; ok {
+			var m map[string]json.RawMessage
+			if err := json.Unmarshal(nested, &m); err == nil {
+				target = m
+			}
+		}
+	}
+
+	f.Price = jsonInt64(target, "list_price", "price")
+	f.Bedrooms = jsonFloat64(target, "beds", "bedrooms")
+	f.Bathrooms = jsonFloat64(target, "baths", "bathrooms", "baths_consolidated", "baths_full")
+	f.Sqft = jsonInt64(target, "sqft", "building_size", "living_area")
+	f.YearBuilt = jsonInt64(target, "year_built")
+	f.PropertyType = jsonString(target, "prop_type", "property_type", "type")
+	f.Status = jsonString(target, "prop_status", "status")
+
+	// lot_size might be nested or a direct field
+	f.LotSize = jsonFloat64(target, "lot_sqft", "lot_size")
+	// Convert lot sqft to acres if it seems like sqft (> 100)
+	if f.LotSize != nil && *f.LotSize > 100 {
+		acres := *f.LotSize / 43560.0
+		f.LotSize = &acres
+	}
+
+	return f
+}
+
+type parsedFields struct {
+	Price        *int64
+	Bedrooms     *float64
+	Bathrooms    *float64
+	Sqft         *int64
+	LotSize      *float64
+	YearBuilt    *int64
+	PropertyType *string
+	Status       *string
+}
+
+// jsonInt64 tries multiple keys and returns the first valid int64 value.
+func jsonInt64(data map[string]json.RawMessage, keys ...string) *int64 {
+	for _, key := range keys {
+		raw, ok := data[key]
+		if !ok {
+			continue
+		}
+		var v float64
+		if err := json.Unmarshal(raw, &v); err == nil {
+			i := int64(v)
+			return &i
+		}
+	}
+	return nil
+}
+
+// jsonFloat64 tries multiple keys and returns the first valid float64 value.
+func jsonFloat64(data map[string]json.RawMessage, keys ...string) *float64 {
+	for _, key := range keys {
+		raw, ok := data[key]
+		if !ok {
+			continue
+		}
+		var v float64
+		if err := json.Unmarshal(raw, &v); err == nil {
+			return &v
+		}
+	}
+	return nil
+}
+
+// jsonString tries multiple keys and returns the first valid string value.
+func jsonString(data map[string]json.RawMessage, keys ...string) *string {
+	for _, key := range keys {
+		raw, ok := data[key]
+		if !ok {
+			continue
+		}
+		var v string
+		if err := json.Unmarshal(raw, &v); err == nil && v != "" {
+			return &v
+		}
+	}
+	return nil
+}
