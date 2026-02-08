@@ -41,6 +41,7 @@ func NewRootCmd() *cobra.Command {
 		newCommentsCmd(),
 		newRemoveCmd(),
 		newServeCmd(),
+		newVersionCmd(),
 	)
 
 	return root
