@@ -5,49 +5,71 @@ A tool to find and track houses for sale
 ## Prerequisites
 
 - Go 1.21+
+- golangci-lint
+- A [RapidAPI](https://rapidapi.com/) key for the us-real-estate-listings API
 
-## Installation
+## Setup
 
 ```bash
 go mod download
+cp .env.example .env
+# Edit .env and add your RAPIDAPI_KEY
 ```
 
-## How to Work on This Project
-
-### Start the Dev Environment
+## Build
 
 ```bash
-make dev
+make build
 ```
 
-This starts all services defined in `Procfile.dev`. The command returns immediately (daemonized).
+This produces a `house-finder` binary in the project root.
 
-### View Logs
+## Usage
 
 ```bash
-# Stream all logs (Ctrl+C to stop)
-make dev-logs
+# Add a property (hits the API once)
+./house-finder add "123 Main St, City, ST 12345"
 
-# Quick peek at recent logs
-make dev-tail
+# List all properties
+./house-finder list
+
+# Show property details
+./house-finder show 1
+
+# Rate a property (1-4, 4 is best)
+./house-finder rate 1 4
+
+# Add a comment
+./house-finder comment 1 "Great backyard"
+
+# List comments
+./house-finder comments 1
+
+# Start the web UI
+./house-finder serve
+
+# JSON output for AI agents
+./house-finder list --format json
 ```
 
-### Check Status
+## Development
+
+### Build
 
 ```bash
-make dev-status
-```
-
-### Stop the Dev Environment
-
-```bash
-make dev-stop
+make build
 ```
 
 ### Run Tests and Linting
 
 ```bash
 make check
+```
+
+### Start Dev Environment
+
+```bash
+make dev
 ```
 
 ### Before Opening a PR
@@ -61,10 +83,6 @@ make pre-pr
 ```bash
 make help
 ```
-
-## Dev Environment Setup
-
-If `make dev` fails, the dev environment needs configuration. See the "Set up dev environment" task (#1635) for details on configuring `Procfile.dev` and any required services.
 
 ## License
 
