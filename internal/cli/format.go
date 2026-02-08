@@ -141,8 +141,14 @@ func formatPrice(cents int64) string {
 	return strings.Join(parts, ",")
 }
 
-// formatRating returns a star representation of a rating.
+// formatRating returns a star representation of a rating (1-4).
 func formatRating(rating int64) string {
+	if rating < 1 {
+		rating = 1
+	}
+	if rating > 4 {
+		rating = 4
+	}
 	return strings.Repeat("★", int(rating)) + strings.Repeat("☆", 4-int(rating))
 }
 

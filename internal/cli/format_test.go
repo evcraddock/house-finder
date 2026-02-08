@@ -34,6 +34,8 @@ func TestFormatRating(t *testing.T) {
 		{"two", 2, "★★☆☆"},
 		{"three", 3, "★★★☆"},
 		{"four", 4, "★★★★"},
+		{"clamp low", 0, "★☆☆☆"},
+		{"clamp high", 5, "★★★★"},
 	}
 
 	for _, tt := range tests {
