@@ -1,0 +1,26 @@
+# Binary
+*.exe
+/bin/
+
+# Build
+/dist/
+
+# Dependencies
+/vendor/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Test
+coverage.out
+
+# AI agent config
+.claude/
