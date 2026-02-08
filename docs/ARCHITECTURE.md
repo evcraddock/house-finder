@@ -13,7 +13,7 @@ An AI agent can drive the CLI with `--format json`. A human can use the web UI o
 
 - **One API call per property.** The RapidAPI free tier is limited. The `add` command is the only thing that hits the API. Everything else reads from SQLite.
 - **Single binary.** CLI commands and web server live in the same binary. `house-finder serve` starts the web UI.
-- **No CGO.** Use `modernc.org/sqlite` (pure Go) so the binary is portable.
+- **SQLite via mattn/go-sqlite3.** Standard CGO-based SQLite binding.
 
 ## Data Model
 
@@ -185,7 +185,7 @@ internal/
 | Package | Purpose |
 |---------|---------|
 | `github.com/spf13/cobra` | CLI framework |
-| `modernc.org/sqlite` | Pure Go SQLite driver |
+| `github.com/mattn/go-sqlite3` | SQLite driver |
 | `net/http` (stdlib) | Web server |
 | `html/template` (stdlib) | HTML rendering |
 | `encoding/json` (stdlib) | JSON parsing/output |
@@ -210,11 +210,11 @@ internal/
 
 **Rationale:** Protects API quota. If data needs updating, explicitly `remove` and `add` again. The friction is intentional.
 
-### ADR-4: Pure Go SQLite (no CGO)
+### ADR-4: mattn/go-sqlite3
 
-**Decision:** Use `modernc.org/sqlite` instead of `mattn/go-sqlite3`.
+**Decision:** Use `github.com/mattn/go-sqlite3` for SQLite.
 
-**Rationale:** No C compiler required. Cross-compilation works. Single binary stays truly portable.
+**Rationale:** Most widely used Go SQLite driver. Battle-tested. Standard choice.
 
 ### ADR-5: cobra for CLI
 

@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // DefaultPath returns the default database path: ~/.house-finder/houses.db
@@ -27,7 +27,7 @@ func Open(path string) (*sql.DB, error) {
 		return nil, fmt.Errorf("creating database directory %s: %w", dir, err)
 	}
 
-	db, err := sql.Open("sqlite", path)
+	db, err := sql.Open("sqlite3", path)
 	if err != nil {
 		return nil, fmt.Errorf("opening database: %w", err)
 	}
