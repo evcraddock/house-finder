@@ -1,0 +1,380 @@
+package property
+
+import (
+	"encoding/json"
+	"fmt"
+	"path/filepath"
+	"testing"
+
+	"github.com/evcraddock/house-finder/internal/db"
+)
+
+func TestInsertAndGetByID(t *testing.T) {
+	repo := testRepo(t)
+
+	p := &Property{
+		Address:    "123 Main St",
+		MprID:      "M1111111111",
+		RealtorURL: "/detail/123-Main-St",
+		RawJSON:    json.RawMessage(`{"price": 250000}`),
+	}
+
+	saved, err := repo.Insert(p)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	if saved.ID == 0 {
+		t.Error("expected non-zero ID")
+	}
+	if saved.Address != "123 Main St" {
+		t.Errorf("address = %q, want %q", saved.Address, "123 Main St")
+	}
+
+	got, err := repo.GetByID(saved.ID)
+	if err != nil {
+		t.Fatalf("get by id: %v", err)
+	}
+	if got.MprID != "M1111111111" {
+		t.Errorf("mpr_id = %q, want %q", got.MprID, "M1111111111")
+	}
+}
+
+func TestGetByIDNotFound(t *testing.T) {
+	repo := testRepo(t)
+
+	_, err := repo.GetByID(9999)
+	if err == nil {
+		t.Fatal("expected error for missing property")
+	}
+}
+
+func TestInsertWithFields(t *testing.T) {
+	repo := testRepo(t)
+
+	price := int64(25000000) // $250,000 in cents
+	beds := 3.0
+	baths := 2.5
+	sqft := int64(1800)
+	lot := 0.25
+	year := int64(2005)
+	ptype := "single_family"
+	status := "active"
+
+	p := &Property{
+		Address:      "456 Oak Ave",
+		MprID:        "M2222222222",
+		RealtorURL:   "/detail/456-Oak-Ave",
+		Price:        &price,
+		Bedrooms:     &beds,
+		Bathrooms:    &baths,
+		Sqft:         &sqft,
+		LotSize:      &lot,
+		YearBuilt:    &year,
+		PropertyType: &ptype,
+		Status:       &status,
+		RawJSON:      json.RawMessage(`{}`),
+	}
+
+	saved, err := repo.Insert(p)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	if saved.Price == nil || *saved.Price != price {
+		t.Errorf("price = %v, want %d", saved.Price, price)
+	}
+	if saved.Bedrooms == nil || *saved.Bedrooms != beds {
+		t.Errorf("bedrooms = %v, want %f", saved.Bedrooms, beds)
+	}
+	if saved.Bathrooms == nil || *saved.Bathrooms != baths {
+		t.Errorf("bathrooms = %v, want %f", saved.Bathrooms, baths)
+	}
+}
+
+func TestInsertDuplicateMprID(t *testing.T) {
+	repo := testRepo(t)
+
+	p := &Property{
+		Address:    "123 Main St",
+		MprID:      "M-DUPE",
+		RealtorURL: "/detail/123",
+		RawJSON:    json.RawMessage(`{}`),
+	}
+
+	if _, err := repo.Insert(p); err != nil {
+		t.Fatalf("first insert: %v", err)
+	}
+
+	_, err := repo.Insert(p)
+	if err == nil {
+		t.Fatal("expected error for duplicate mpr_id")
+	}
+}
+
+func TestList(t *testing.T) {
+	repo := testRepo(t)
+
+	// Insert 3 properties
+	for i, addr := range []string{"111 A St", "222 B St", "333 C St"} {
+		p := &Property{
+			Address:    addr,
+			MprID:      fmt.Sprintf("M-LIST-%d", i),
+			RealtorURL: fmt.Sprintf("/detail/%d", i),
+			RawJSON:    json.RawMessage(`{}`),
+		}
+		if _, err := repo.Insert(p); err != nil {
+			t.Fatalf("insert %d: %v", i, err)
+		}
+	}
+
+	props, err := repo.List(ListOptions{})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(props) != 3 {
+		t.Errorf("got %d properties, want 3", len(props))
+	}
+}
+
+func TestListFilterByRating(t *testing.T) {
+	repo := testRepo(t)
+
+	// Insert properties and rate some
+	for i := 0; i < 4; i++ {
+		p := &Property{
+			Address:    fmt.Sprintf("%d Filter St", i),
+			MprID:      fmt.Sprintf("M-FILTER-%d", i),
+			RealtorURL: fmt.Sprintf("/detail/filter-%d", i),
+			RawJSON:    json.RawMessage(`{}`),
+		}
+		saved, err := repo.Insert(p)
+		if err != nil {
+			t.Fatalf("insert %d: %v", i, err)
+		}
+		if i > 0 { // rate properties 1-3 with ratings 1-3
+			if err := repo.UpdateRating(saved.ID, i); err != nil {
+				t.Fatalf("rate %d: %v", i, err)
+			}
+		}
+	}
+
+	tests := []struct {
+		name      string
+		minRating int
+		wantCount int
+	}{
+		{"min rating 1", 1, 3},
+		{"min rating 2", 2, 2},
+		{"min rating 3", 3, 1},
+		{"min rating 4", 4, 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rating := tt.minRating
+			props, err := repo.List(ListOptions{MinRating: &rating})
+			if err != nil {
+				t.Fatalf("list: %v", err)
+			}
+			if len(props) != tt.wantCount {
+				t.Errorf("got %d properties, want %d", len(props), tt.wantCount)
+			}
+		})
+	}
+}
+
+func TestUpdateRating(t *testing.T) {
+	repo := testRepo(t)
+
+	p := &Property{
+		Address:    "789 Rate St",
+		MprID:      "M-RATE",
+		RealtorURL: "/detail/rate",
+		RawJSON:    json.RawMessage(`{}`),
+	}
+	saved, err := repo.Insert(p)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		rating  int
+		wantErr bool
+	}{
+		{"valid rating 1", 1, false},
+		{"valid rating 4", 4, false},
+		{"invalid rating 0", 0, true},
+		{"invalid rating 5", 5, true},
+		{"invalid rating -1", -1, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := repo.UpdateRating(saved.ID, tt.rating)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			got, err := repo.GetByID(saved.ID)
+			if err != nil {
+				t.Fatalf("get: %v", err)
+			}
+			if got.Rating == nil || *got.Rating != int64(tt.rating) {
+				t.Errorf("rating = %v, want %d", got.Rating, tt.rating)
+			}
+		})
+	}
+}
+
+func TestUpdateRatingNotFound(t *testing.T) {
+	repo := testRepo(t)
+
+	err := repo.UpdateRating(9999, 3)
+	if err == nil {
+		t.Fatal("expected error for missing property")
+	}
+}
+
+func TestDelete(t *testing.T) {
+	repo := testRepo(t)
+
+	p := &Property{
+		Address:    "999 Delete St",
+		MprID:      "M-DELETE",
+		RealtorURL: "/detail/delete",
+		RawJSON:    json.RawMessage(`{}`),
+	}
+	saved, err := repo.Insert(p)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	if err := repo.Delete(saved.ID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+
+	_, err = repo.GetByID(saved.ID)
+	if err == nil {
+		t.Fatal("expected error after delete")
+	}
+}
+
+func TestDeleteNotFound(t *testing.T) {
+	repo := testRepo(t)
+
+	err := repo.Delete(9999)
+	if err == nil {
+		t.Fatal("expected error for missing property")
+	}
+}
+
+func TestParseRawJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		raw      string
+		wantFunc func(t *testing.T, f parsedFields)
+	}{
+		{
+			name: "flat fields",
+			raw:  `{"list_price": 250000, "beds": 3, "baths": 2.5, "sqft": 1800, "year_built": 2005, "prop_type": "single_family", "prop_status": "active", "lot_sqft": 10890}`,
+			wantFunc: func(t *testing.T, f parsedFields) {
+				assertInt64(t, "price", f.Price, 250000)
+				assertFloat64(t, "beds", f.Bedrooms, 3)
+				assertFloat64(t, "baths", f.Bathrooms, 2.5)
+				assertInt64(t, "sqft", f.Sqft, 1800)
+				assertInt64(t, "year_built", f.YearBuilt, 2005)
+				assertString(t, "prop_type", f.PropertyType, "single_family")
+				assertString(t, "status", f.Status, "active")
+				if f.LotSize == nil {
+					t.Error("lot_size is nil")
+				} else if *f.LotSize < 0.24 || *f.LotSize > 0.26 {
+					t.Errorf("lot_size = %f, want ~0.25 acres", *f.LotSize)
+				}
+			},
+		},
+		{
+			name: "nested under data.property",
+			raw:  `{"data": {"property": {"price": 300000, "bedrooms": 4, "bathrooms": 3, "living_area": 2200}}}`,
+			wantFunc: func(t *testing.T, f parsedFields) {
+				assertInt64(t, "price", f.Price, 300000)
+				assertFloat64(t, "beds", f.Bedrooms, 4)
+				assertFloat64(t, "baths", f.Bathrooms, 3)
+				assertInt64(t, "sqft", f.Sqft, 2200)
+			},
+		},
+		{
+			name: "empty json",
+			raw:  `{}`,
+			wantFunc: func(t *testing.T, f parsedFields) {
+				if f.Price != nil {
+					t.Error("expected nil price for empty json")
+				}
+			},
+		},
+		{
+			name: "invalid json",
+			raw:  `not json`,
+			wantFunc: func(t *testing.T, f parsedFields) {
+				if f.Price != nil {
+					t.Error("expected nil price for invalid json")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := parseRawJSON(json.RawMessage(tt.raw))
+			tt.wantFunc(t, f)
+		})
+	}
+}
+
+func testRepo(t *testing.T) *Repository {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "test.db")
+	d, err := db.Open(path)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := d.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
+	return NewRepository(d)
+}
+
+func assertInt64(t *testing.T, name string, got *int64, want int64) {
+	t.Helper()
+	if got == nil {
+		t.Errorf("%s is nil, want %d", name, want)
+	} else if *got != want {
+		t.Errorf("%s = %d, want %d", name, *got, want)
+	}
+}
+
+func assertFloat64(t *testing.T, name string, got *float64, want float64) {
+	t.Helper()
+	if got == nil {
+		t.Errorf("%s is nil, want %f", name, want)
+	} else if *got != want {
+		t.Errorf("%s = %f, want %f", name, *got, want)
+	}
+}
+
+func assertString(t *testing.T, name string, got *string, want string) {
+	t.Helper()
+	if got == nil {
+		t.Errorf("%s is nil, want %q", name, want)
+	} else if *got != want {
+		t.Errorf("%s = %q, want %q", name, *got, want)
+	}
+}
