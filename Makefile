@@ -1,10 +1,13 @@
-.PHONY: build dev dev-stop dev-status dev-logs dev-tail check pre-pr help
+.PHONY: build install dev dev-stop dev-status dev-logs dev-tail check pre-pr help
 
 BINARY := house-finder
 SOCKET := ./.overmind.sock
 
 build: ## Build the binary
 	go build -o $(BINARY) ./cmd/house-finder
+
+install: ## Install to $GOPATH/bin
+	go install ./cmd/house-finder
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
