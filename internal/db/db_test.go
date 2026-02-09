@@ -118,6 +118,11 @@ func TestMigrations(t *testing.T) {
 			table: "sessions",
 			cols:  []string{"id", "email", "expires_at", "created_at"},
 		},
+		{
+			name:  "passkey_credentials table exists",
+			table: "passkey_credentials",
+			cols:  []string{"id", "email", "name", "credential_json", "created_at"},
+		},
 	}
 
 	d := openTestDB(t)

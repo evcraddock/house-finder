@@ -30,5 +30,9 @@ func isPublicPath(path string) bool {
 	if strings.HasPrefix(path, "/static/") {
 		return true
 	}
+	// Passkey login endpoints must be public (user isn't authenticated yet)
+	if path == "/passkey/login/begin" || path == "/passkey/login/finish" {
+		return true
+	}
 	return false
 }

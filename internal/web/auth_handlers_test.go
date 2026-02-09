@@ -2,12 +2,15 @@ package web
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/go-webauthn/webauthn/webauthn"
 
 	"github.com/evcraddock/house-finder/internal/auth"
 	"github.com/evcraddock/house-finder/internal/db"
@@ -29,6 +32,9 @@ func TestLoginPageRendersForm(t *testing.T) {
 	}
 	if !strings.Contains(body, `action="/auth/login"`) {
 		t.Error("expected login form action")
+	}
+	if strings.Contains(body, "passkey-login-btn") {
+		t.Error("passkey button should not appear when no passkeys registered")
 	}
 }
 
@@ -222,7 +228,131 @@ func TestProtectedRouteAllowsAuthenticated(t *testing.T) {
 	}
 }
 
+func TestSettingsRendersPasskeys(t *testing.T) {
+	srv, d := testServerWithDBAndAuth(t, "admin@example.com")
+	cookie := createTestSession(t, d, "admin@example.com")
+
+	// Add a passkey
+	store := auth.NewPasskeyStore(d)
+	cred := &webauthn.Credential{ID: []byte("test-cred"), PublicKey: []byte("test-key")}
+	if err := store.Save("admin@example.com", "My Laptop", cred); err != nil {
+		t.Fatalf("save passkey: %v", err)
+	}
+
+	r := httptest.NewRequest("GET", "/settings", nil)
+	r.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "My Laptop") {
+		t.Error("expected passkey name in settings page")
+	}
+	if !strings.Contains(body, "Register Passkey") {
+		t.Error("expected register button")
+	}
+}
+
+func TestSettingsRedirectsUnauthenticated(t *testing.T) {
+	srv := testServerWithAuth(t, "admin@example.com")
+
+	r := httptest.NewRequest("GET", "/settings", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, r)
+
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusSeeOther)
+	}
+	if w.Header().Get("Location") != "/login" {
+		t.Errorf("location = %q, want /login", w.Header().Get("Location"))
+	}
+}
+
+func TestPasskeyDeleteSuccess(t *testing.T) {
+	srv, d := testServerWithDBAndAuth(t, "admin@example.com")
+	cookie := createTestSession(t, d, "admin@example.com")
+
+	store := auth.NewPasskeyStore(d)
+	cred := &webauthn.Credential{ID: []byte("delete-me"), PublicKey: []byte("key")}
+	if err := store.Save("admin@example.com", "To Delete", cred); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	credID := fmt.Sprintf("%x", cred.ID)
+	form := url.Values{"id": {credID}}
+	r := httptest.NewRequest("POST", "/settings/passkey/delete", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, r)
+
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusSeeOther)
+	}
+	if w.Header().Get("Location") != "/settings" {
+		t.Errorf("location = %q, want /settings", w.Header().Get("Location"))
+	}
+
+	// Verify deleted
+	stored, err := store.ListByEmail("admin@example.com")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(stored) != 0 {
+		t.Errorf("got %d passkeys after delete, want 0", len(stored))
+	}
+}
+
+func TestPasskeyDeleteWrongMethod(t *testing.T) {
+	srv, d := testServerWithDBAndAuth(t, "admin@example.com")
+	cookie := createTestSession(t, d, "admin@example.com")
+
+	r := httptest.NewRequest("GET", "/settings/passkey/delete", nil)
+	r.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, r)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestPasskeyDeleteMissingID(t *testing.T) {
+	srv, d := testServerWithDBAndAuth(t, "admin@example.com")
+	cookie := createTestSession(t, d, "admin@example.com")
+
+	form := url.Values{"id": {""}}
+	r := httptest.NewRequest("POST", "/settings/passkey/delete", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
 // test helpers
+
+func createTestSession(t *testing.T, d *sql.DB, email string) *http.Cookie {
+	t.Helper()
+	sessions := auth.NewSessionStore(d, false)
+	w := httptest.NewRecorder()
+	if err := sessions.Create(w, email); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	for _, c := range w.Result().Cookies() {
+		if c.Name == "hf_session" {
+			return c
+		}
+	}
+	t.Fatal("no session cookie found")
+	return nil
+}
 
 func testServerWithAuth(t *testing.T, adminEmail string) *Server {
 	t.Helper()

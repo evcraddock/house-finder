@@ -25,6 +25,15 @@
             {{if .Error}}
             <div class="flash flash-error">{{.Error}}</div>
             {{end}}
+
+            {{if .HasPasskeys}}
+            <div class="login-section">
+                <button id="passkey-login-btn" class="btn login-btn passkey-btn" onclick="loginWithPasskey()">🔑 Sign in with Passkey</button>
+                <div id="passkey-status" class="passkey-status"></div>
+            </div>
+            <div class="login-divider"><span>or</span></div>
+            {{end}}
+
             <p class="login-info">Enter your email address and we'll send you a login link.</p>
             <form method="POST" action="/auth/login">
                 <input type="email" name="email" placeholder="you@example.com" required class="login-input">
@@ -32,5 +41,83 @@
             </form>
         </div>
     </main>
+
+    {{if .HasPasskeys}}
+    <script>
+    async function loginWithPasskey() {
+        const statusEl = document.getElementById('passkey-status');
+        statusEl.textContent = 'Starting...';
+
+        try {
+            // 1. Get login options
+            const beginResp = await fetch('/passkey/login/begin');
+            if (!beginResp.ok) throw new Error('Failed to start login');
+            const options = await beginResp.json();
+
+            // 2. Decode challenge
+            options.publicKey.challenge = base64urlToBuffer(options.publicKey.challenge);
+            if (options.publicKey.allowCredentials) {
+                options.publicKey.allowCredentials = options.publicKey.allowCredentials.map(c => ({
+                    ...c,
+                    id: base64urlToBuffer(c.id)
+                }));
+            }
+
+            // 3. Get assertion from authenticator
+            statusEl.textContent = 'Waiting for authenticator...';
+            const assertion = await navigator.credentials.get(options);
+
+            // 4. Encode for server
+            const assertionResponse = {
+                id: assertion.id,
+                rawId: bufferToBase64url(assertion.rawId),
+                type: assertion.type,
+                response: {
+                    authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
+                    clientDataJSON: bufferToBase64url(assertion.response.clientDataJSON),
+                    signature: bufferToBase64url(assertion.response.signature),
+                    userHandle: assertion.response.userHandle ? bufferToBase64url(assertion.response.userHandle) : ''
+                }
+            };
+
+            // 5. Verify with server
+            const finishResp = await fetch('/passkey/login/finish', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(assertionResponse)
+            });
+
+            if (!finishResp.ok) throw new Error('Login failed');
+
+            statusEl.textContent = '✓ Logged in!';
+            statusEl.className = 'passkey-status passkey-success';
+            setTimeout(() => window.location.href = '/', 500);
+        } catch (err) {
+            if (err.name === 'NotAllowedError') {
+                statusEl.textContent = '';
+            } else {
+                statusEl.textContent = '✗ ' + err.message;
+                statusEl.className = 'passkey-status passkey-error';
+            }
+        }
+    }
+
+    function base64urlToBuffer(base64url) {
+        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        const pad = base64.length % 4 === 0 ? '' : '='.repeat(4 - (base64.length % 4));
+        const binary = atob(base64 + pad);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes.buffer;
+    }
+
+    function bufferToBase64url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+    </script>
+    {{end}}
 </body>
 </html>

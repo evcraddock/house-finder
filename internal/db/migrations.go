@@ -46,6 +46,13 @@ var migrations = []string{
 		expires_at DATETIME NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	)`,
+	`CREATE TABLE IF NOT EXISTS passkey_credentials (
+		id              TEXT    PRIMARY KEY,
+		email           TEXT    NOT NULL,
+		name            TEXT    NOT NULL DEFAULT '',
+		credential_json TEXT    NOT NULL,
+		created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`,
 }
 
 // migrate runs all migrations in order.

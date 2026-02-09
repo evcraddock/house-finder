@@ -26,6 +26,7 @@ type Server struct {
 	propRepo    *property.Repository
 	commentRepo *comment.Repository
 	sessions    *auth.SessionStore
+	passkeys    *auth.PasskeyStore
 	templates   *template.Template
 	handler     http.Handler
 }
@@ -50,12 +51,14 @@ func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 
 	tokens := auth.NewTokenStore(db)
 	sessions := auth.NewSessionStore(db, !authCfg.DevMode)
+	passkeys := auth.NewPasskeyStore(db)
 	mailer := auth.NewMailer(authCfg)
 
 	s := &Server{
 		propRepo:    property.NewRepository(db),
 		commentRepo: comment.NewRepository(db),
 		sessions:    sessions,
+		passkeys:    passkeys,
 		templates:   tmpl,
 	}
 
@@ -71,6 +74,7 @@ func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 		config:   authCfg,
 		tokens:   tokens,
 		sessions: sessions,
+		passkeys: passkeys,
 		mailer:   mailer,
 		render:   s.render,
 	}
@@ -82,9 +86,23 @@ func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 	mux.HandleFunc("/auth/verify", ah.handleVerify)
 	mux.HandleFunc("/auth/logout", ah.handleLogout)
 
+	// Passkey routes (login endpoints are public, registration requires session)
+	if authCfg.AdminEmail != "" {
+		ph, phErr := newPasskeyHandlers(authCfg, passkeys, sessions)
+		if phErr != nil {
+			return nil, fmt.Errorf("creating passkey handlers: %w", phErr)
+		}
+		mux.HandleFunc("/passkey/login/begin", ph.handleBeginLogin)
+		mux.HandleFunc("/passkey/login/finish", ph.handleFinishLogin)
+		mux.HandleFunc("/passkey/register/begin", ph.handleBeginRegistration)
+		mux.HandleFunc("/passkey/register/finish", ph.handleFinishRegistration)
+	}
+
 	// Protected routes
 	mux.HandleFunc("/", s.handleList)
 	mux.HandleFunc("/property/", s.handlePropertyRoute)
+	mux.HandleFunc("/settings", s.handleSettings)
+	mux.HandleFunc("/settings/passkey/delete", s.handlePasskeyDelete)
 
 	// Wrap everything with auth middleware if admin email is configured
 	if authCfg.AdminEmail != "" {

@@ -148,6 +148,69 @@ func (s *Server) handleRatePost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/property/%d", id), http.StatusSeeOther)
 }
 
+// handleSettings renders the settings page with passkey management.
+func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	email, err := s.sessions.Validate(r)
+	if err != nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	stored, err := s.passkeys.ListByEmail(email)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error loading passkeys: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	type passkeyItem struct {
+		ID   string
+		Name string
+	}
+	type settingsData struct {
+		Passkeys []passkeyItem
+		Flash    string
+	}
+
+	passkeys := make([]passkeyItem, len(stored))
+	for i, sc := range stored {
+		passkeys[i] = passkeyItem{ID: sc.ID, Name: sc.Name}
+	}
+
+	s.render(w, "settings.html", settingsData{Passkeys: passkeys})
+}
+
+// handlePasskeyDelete proxies to the passkey handler delete endpoint.
+func (s *Server) handlePasskeyDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	email, err := s.sessions.Validate(r)
+	if err != nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	id := r.FormValue("id")
+	if id == "" {
+		http.Error(w, "Missing credential ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.passkeys.Delete(id, email); err != nil {
+		http.Error(w, fmt.Sprintf("Error deleting passkey: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/settings", http.StatusSeeOther)
+}
+
 // render executes a full page template with layout.
 func (s *Server) render(w http.ResponseWriter, name string, data interface{}) {
 	// Execute layout.html which includes blocks from the named template
