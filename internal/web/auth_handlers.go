@@ -14,6 +14,7 @@ type authHandlers struct {
 	tokens   *auth.TokenStore
 	sessions *auth.SessionStore
 	passkeys *auth.PasskeyStore
+	users    *auth.UserStore
 	mailer   *auth.Mailer
 	render   func(w http.ResponseWriter, name string, data interface{})
 }
@@ -54,8 +55,8 @@ func (h *authHandlers) handleLoginSubmit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Only send a real token if email matches admin
-	if email == strings.ToLower(h.config.AdminEmail) {
+	// Only send a real token if email is authorized (admin or in users table)
+	if h.users.IsAuthorized(email) {
 		token, err := h.tokens.Create(email)
 		if err != nil {
 			// Log internally but don't reveal to user
@@ -104,14 +105,20 @@ func (h *authHandlers) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-// hasPasskeys checks if any passkeys are registered for the admin email.
+// hasPasskeys checks if any passkeys are registered for any authorized user.
 func (h *authHandlers) hasPasskeys() bool {
-	if h.passkeys == nil || h.config.AdminEmail == "" {
+	if h.passkeys == nil {
 		return false
 	}
-	creds, err := h.passkeys.WebAuthnCredentials(h.config.AdminEmail)
+	emails, err := h.users.AllEmails()
 	if err != nil {
 		return false
 	}
-	return len(creds) > 0
+	for _, email := range emails {
+		creds, cerr := h.passkeys.WebAuthnCredentials(email)
+		if cerr == nil && len(creds) > 0 {
+			return true
+		}
+	}
+	return false
 }

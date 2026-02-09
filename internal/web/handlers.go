@@ -169,6 +169,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	type settingsData struct {
 		Passkeys []passkeyItem
 		Flash    string
+		IsAdmin  bool
 	}
 
 	passkeys := make([]passkeyItem, len(stored))
@@ -176,7 +177,10 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		passkeys[i] = passkeyItem{ID: sc.ID, Name: sc.Name}
 	}
 
-	s.render(w, "settings.html", settingsData{Passkeys: passkeys})
+	s.render(w, "settings.html", settingsData{
+		Passkeys: passkeys,
+		IsAdmin:  s.users.IsAdmin(email),
+	})
 }
 
 // handlePasskeyDelete proxies to the passkey handler delete endpoint.

@@ -122,6 +122,16 @@ The web UI is available at `http://localhost:8080` when the server is running. I
 
 Set `HF_ADMIN_EMAIL` in `.env` to enable authentication. In dev mode (`HF_DEV_MODE=true`), magic links are logged to the console instead of emailed.
 
+### Multi-User Access
+
+The admin (configured via `HF_ADMIN_EMAIL`) can add authorized users from the Settings page. Authorized users can:
+- Log in via magic link or passkey
+- Register their own passkeys
+- Create their own API keys
+- Use all features (add properties, rate, comment, browse)
+
+Only the admin can manage the authorized users list.
+
 ## REST API
 
 All endpoints require `Authorization: Bearer <api_key>` header.

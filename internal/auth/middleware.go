@@ -144,5 +144,6 @@ func isPublicPath(path string) bool {
 }
 
 func isAPIKeyManagementPath(path string) bool {
-	return path == "/api/keys" || strings.HasPrefix(path, "/api/keys/")
+	return path == "/api/keys" || strings.HasPrefix(path, "/api/keys/") ||
+		path == "/api/users" || strings.HasPrefix(path, "/api/users/")
 }

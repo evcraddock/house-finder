@@ -19,18 +19,19 @@ type passkeyHandlers struct {
 	wan      *webauthn.WebAuthn
 	passkeys *auth.PasskeyStore
 	sessions *auth.SessionStore
+	users    *auth.UserStore
 	config   auth.Config
 
 	// In-memory session data for in-flight WebAuthn ceremonies.
 	// regSessions is keyed by email for registration.
 	// loginSessionData holds a single login ceremony — only one concurrent
-	// passkey login is supported (acceptable for single-admin app).
+	// passkey login is supported (acceptable for small user base).
 	mu               sync.Mutex
 	regSessions      map[string]*webauthn.SessionData
 	loginSessionData *webauthn.SessionData
 }
 
-func newPasskeyHandlers(cfg auth.Config, passkeys *auth.PasskeyStore, sessions *auth.SessionStore) (*passkeyHandlers, error) {
+func newPasskeyHandlers(cfg auth.Config, passkeys *auth.PasskeyStore, sessions *auth.SessionStore, users *auth.UserStore) (*passkeyHandlers, error) {
 	parsed, err := url.Parse(cfg.BaseURL)
 	if err != nil {
 		return nil, err
@@ -51,6 +52,7 @@ func newPasskeyHandlers(cfg auth.Config, passkeys *auth.PasskeyStore, sessions *
 		wan:         wan,
 		passkeys:    passkeys,
 		sessions:    sessions,
+		users:       users,
 		config:      cfg,
 		regSessions: make(map[string]*webauthn.SessionData),
 	}, nil
@@ -184,23 +186,29 @@ func (h *passkeyHandlers) handleFinishLogin(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	var loggedInEmail string
+
 	handler := func(rawID, userHandle []byte) (webauthn.User, error) {
 		// userHandle is the WebAuthnID (sha256 of email)
-		// We only have one admin, so verify it matches
-		email := h.config.AdminEmail
-		user := auth.NewPasskeyUser(email, nil)
-
-		// Verify the userHandle matches
-		if string(user.WebAuthnID()) != string(userHandle) {
-			return nil, protocol.ErrBadRequest.WithDetails("unknown user")
+		// Try all authorized emails to find the matching user
+		emails, emailErr := h.users.AllEmails()
+		if emailErr != nil {
+			return nil, emailErr
 		}
 
-		creds, err := h.passkeys.WebAuthnCredentials(email)
-		if err != nil {
-			return nil, err
+		for _, email := range emails {
+			user := auth.NewPasskeyUser(email, nil)
+			if string(user.WebAuthnID()) == string(userHandle) {
+				creds, credErr := h.passkeys.WebAuthnCredentials(email)
+				if credErr != nil {
+					return nil, credErr
+				}
+				loggedInEmail = email
+				return auth.NewPasskeyUser(email, creds), nil
+			}
 		}
 
-		return auth.NewPasskeyUser(email, creds), nil
+		return nil, protocol.ErrBadRequest.WithDetails("unknown user")
 	}
 
 	_, _, err := h.wan.FinishPasskeyLogin(handler, *session, r)
@@ -210,7 +218,7 @@ func (h *passkeyHandlers) handleFinishLogin(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := h.sessions.Create(w, h.config.AdminEmail); err != nil {
+	if err := h.sessions.Create(w, loggedInEmail); err != nil {
 		log.Printf("Error creating session: %v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
