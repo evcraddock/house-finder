@@ -1,11 +1,12 @@
 module github.com/evcraddock/house-finder
 
-go 1.25.6
+go 1.25.7
 
 require (
 	github.com/go-webauthn/webauthn v0.15.0
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/spf13/cobra v1.10.2
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -20,5 +21,4 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/crypto v0.43.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

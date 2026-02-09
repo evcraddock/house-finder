@@ -27,3 +27,4 @@ coverage.out
 # AI agent config
 .claude/
 /house-finder
+dist/
