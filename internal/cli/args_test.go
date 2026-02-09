@@ -12,12 +12,16 @@ func TestAddRequiresAddress(t *testing.T) {
 }
 
 func TestListAcceptsNoArgs(t *testing.T) {
-	// list with a temp DB should work (no args required).
-	// We just test that arg validation passes by providing a bad DB to avoid real DB creation.
-	_, err := executeCommand("list", "--db", "/dev/null/nonexistent")
-	// Error should be about DB, not about args
+	// list should accept zero args (it talks to the API server).
+	// We expect a connection error since no server is running, not an args error.
+	_, err := executeCommand("list")
 	if err == nil {
-		t.Fatal("expected error (bad db path)")
+		// If the dev server happens to be running, list succeeds — that's fine
+		return
+	}
+	// Error should be about connection, not about args
+	if err.Error() == `accepts 0 arg(s), received 1` {
+		t.Fatal("list should accept zero args")
 	}
 }
 

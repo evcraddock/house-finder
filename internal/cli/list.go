@@ -2,8 +2,6 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
-
-	"github.com/evcraddock/house-finder/internal/property"
 )
 
 func newListCmd() *cobra.Command {
@@ -25,18 +23,9 @@ func newListCmd() *cobra.Command {
 }
 
 func runList(minRating int) error {
-	repo, database, err := newPropertyRepo()
-	if err != nil {
-		return err
-	}
-	defer closeDB(database)
+	c := newAPIClient()
 
-	opts := property.ListOptions{}
-	if minRating > 0 {
-		opts.MinRating = &minRating
-	}
-
-	props, err := repo.List(opts)
+	props, err := c.ListProperties(minRating)
 	if err != nil {
 		return err
 	}

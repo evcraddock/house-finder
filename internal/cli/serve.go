@@ -1,9 +1,13 @@
 package cli
 
 import (
+	"log"
+	"os"
+
 	"github.com/spf13/cobra"
 
 	"github.com/evcraddock/house-finder/internal/auth"
+	"github.com/evcraddock/house-finder/internal/mls"
 	"github.com/evcraddock/house-finder/internal/web"
 )
 
@@ -34,7 +38,18 @@ func runServe(port int) error {
 
 	authCfg := auth.ConfigFromEnv()
 
-	srv, err := web.NewServer(database, authCfg)
+	// Create MLS client if RAPIDAPI_KEY is set (optional — enables POST /api/properties)
+	var mlsClient *mls.Client
+	if key := os.Getenv("RAPIDAPI_KEY"); key != "" {
+		c, cErr := mls.NewClient(key)
+		if cErr != nil {
+			log.Printf("Warning: MLS client init failed: %v (POST /api/properties disabled)", cErr)
+		} else {
+			mlsClient = c
+		}
+	}
+
+	srv, err := web.NewServer(database, authCfg, mlsClient)
 	if err != nil {
 		return err
 	}

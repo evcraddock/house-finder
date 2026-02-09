@@ -29,21 +29,17 @@ func runComment(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("comment text is required")
 	}
 
-	repo, database, err := newCommentRepo()
-	if err != nil {
-		return err
-	}
-	defer closeDB(database)
+	c := newAPIClient()
 
-	c, err := repo.Add(id, text)
+	comm, err := c.AddComment(id, text)
 	if err != nil {
 		return err
 	}
 
 	if isJSON() {
-		return printJSON(c)
+		return printJSON(comm)
 	}
 
-	printCommentSingle(c)
+	printCommentSingle(comm)
 	return nil
 }

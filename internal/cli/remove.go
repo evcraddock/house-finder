@@ -23,13 +23,9 @@ func runRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid property ID: %s", args[0])
 	}
 
-	repo, database, err := newPropertyRepo()
-	if err != nil {
-		return err
-	}
-	defer closeDB(database)
+	c := newAPIClient()
 
-	if err := repo.Delete(id); err != nil {
+	if err := c.DeleteProperty(id); err != nil {
 		return err
 	}
 

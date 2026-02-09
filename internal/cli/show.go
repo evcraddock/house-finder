@@ -5,9 +5,6 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
-
-	"github.com/evcraddock/house-finder/internal/comment"
-	"github.com/evcraddock/house-finder/internal/property"
 )
 
 func newShowCmd() *cobra.Command {
@@ -20,46 +17,28 @@ func newShowCmd() *cobra.Command {
 	}
 }
 
-// showOutput is the JSON structure for the show command.
-type showOutput struct {
-	Property *property.Property `json:"property"`
-	Comments []*comment.Comment `json:"comments"`
-}
-
 func runShow(cmd *cobra.Command, args []string) error {
 	id, err := strconv.ParseInt(args[0], 10, 64)
 	if err != nil {
 		return fmt.Errorf("invalid property ID: %s", args[0])
 	}
 
-	database, err := openDB()
-	if err != nil {
-		return err
-	}
-	defer closeDB(database)
+	c := newAPIClient()
 
-	propRepo := property.NewRepository(database)
-	commentRepo := comment.NewRepository(database)
-
-	p, err := propRepo.GetByID(id)
-	if err != nil {
-		return err
-	}
-
-	comments, err := commentRepo.ListByPropertyID(id)
+	resp, err := c.GetProperty(id)
 	if err != nil {
 		return err
 	}
 
 	if isJSON() {
-		return printJSON(showOutput{Property: p, Comments: comments})
+		return printJSON(resp)
 	}
 
-	printPropertySummary(p)
+	printPropertySummary(resp.Property)
 	fmt.Println()
-	if len(comments) > 0 {
-		fmt.Printf("Comments (%d):\n", len(comments))
-		printCommentList(comments)
+	if len(resp.Comments) > 0 {
+		fmt.Printf("Comments (%d):\n", len(resp.Comments))
+		printCommentList(resp.Comments)
 	} else {
 		fmt.Println("No comments.")
 	}
