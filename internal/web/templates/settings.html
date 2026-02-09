@@ -83,6 +83,23 @@
                 <div id="passkey-status" class="passkey-status"></div>
             </div>
         </div>
+        {{if .IsAdmin}}
+        <!-- Authorized Users (admin only) -->
+        <div class="card">
+            <h2>Authorized Users</h2>
+            <p class="settings-info">Users who can log in and use House Finder. Only the admin can manage this list.</p>
+
+            <div id="users-list"></div>
+
+            <div class="user-add">
+                <input type="email" id="user-email" placeholder="Email" class="login-input" style="max-width:250px;display:inline-block;margin-right:0.5rem;">
+                <input type="text" id="user-name" placeholder="Name (optional)" class="login-input" style="max-width:200px;display:inline-block;margin-right:0.5rem;">
+                <button class="btn" onclick="addUser()">Add User</button>
+            </div>
+            <div id="user-status" class="passkey-status"></div>
+        </div>
+        {{end}}
+
     </main>
 
     <script>
@@ -243,6 +260,88 @@
         for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
         return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
     }
+
+    // === Users ===
+
+    {{if .IsAdmin}}
+    async function loadUsers() {
+        const container = document.getElementById('users-list');
+        try {
+            const resp = await fetch('/api/users');
+            if (!resp.ok) throw new Error('Failed to load users');
+            const users = await resp.json();
+
+            if (!users || users.length === 0) {
+                container.innerHTML = '<p class="empty">No authorized users yet. Only the admin can log in.</p>';
+                return;
+            }
+
+            let html = '<table class="passkey-table"><thead><tr><th>Email</th><th>Name</th><th>Added</th><th></th></tr></thead><tbody>';
+            for (const u of users) {
+                const created = new Date(u.created_at).toLocaleDateString();
+                html += '<tr>';
+                html += '<td>' + escapeHtml(u.email) + '</td>';
+                html += '<td>' + escapeHtml(u.name || '—') + '</td>';
+                html += '<td>' + created + '</td>';
+                html += '<td><button class="btn btn-danger btn-sm" onclick="removeUser(' + u.id + ', \'' + escapeHtml(u.email) + '\')">Remove</button></td>';
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = '<p class="passkey-error">Failed to load users.</p>';
+        }
+    }
+
+    async function addUser() {
+        const emailInput = document.getElementById('user-email');
+        const nameInput = document.getElementById('user-name');
+        const statusEl = document.getElementById('user-status');
+        const email = emailInput.value.trim();
+        const name = nameInput.value.trim();
+
+        if (!email) {
+            statusEl.textContent = '✗ Email is required';
+            statusEl.className = 'passkey-status passkey-error';
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/users', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: email, name: name})
+            });
+            if (!resp.ok) {
+                const data = await resp.json();
+                throw new Error(data.error || 'Failed to add user');
+            }
+
+            statusEl.textContent = '✓ User added';
+            statusEl.className = 'passkey-status passkey-success';
+            emailInput.value = '';
+            nameInput.value = '';
+            loadUsers();
+            setTimeout(() => { statusEl.textContent = ''; }, 2000);
+        } catch (err) {
+            statusEl.textContent = '✗ ' + err.message;
+            statusEl.className = 'passkey-status passkey-error';
+        }
+    }
+
+    async function removeUser(id, email) {
+        if (!confirm('Remove ' + email + '? They will no longer be able to log in.')) return;
+        try {
+            const resp = await fetch('/api/users/' + id, {method: 'DELETE'});
+            if (!resp.ok) throw new Error('Failed to remove user');
+            loadUsers();
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
+    }
+
+    loadUsers();
+    {{end}}
     </script>
 </body>
 </html>
