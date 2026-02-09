@@ -54,6 +54,13 @@ dev-tail: ## Show last 100 lines of logs (non-blocking)
 		echo "Dev environment not running"; \
 	fi
 
+dev-connect: ## Connect to a dev process (usage: make dev-connect s=app)
+	@if [ -S $(SOCKET) ]; then \
+		overmind connect -s $(SOCKET) $(or $(s),app); \
+	else \
+		echo "Dev environment not running"; \
+	fi
+
 check: ## Run linting and tests
 	golangci-lint run && go test ./...
 
