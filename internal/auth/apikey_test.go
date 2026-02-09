@@ -10,7 +10,7 @@ import (
 func TestAPIKeyCreateAndValidate(t *testing.T) {
 	store := testAPIKeyStore(t)
 
-	rawKey, key, err := store.Create("Test Key")
+	rawKey, key, err := store.Create("Test Key", "test@example.com")
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestAPIKeyCreateAndValidate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
-	if !valid {
+	if valid == "" {
 		t.Error("expected valid key")
 	}
 }
@@ -44,7 +44,7 @@ func TestAPIKeyValidateInvalid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
-	if valid {
+	if valid != "" {
 		t.Error("expected invalid key")
 	}
 }
@@ -52,10 +52,10 @@ func TestAPIKeyValidateInvalid(t *testing.T) {
 func TestAPIKeyList(t *testing.T) {
 	store := testAPIKeyStore(t)
 
-	if _, _, err := store.Create("Key 1"); err != nil {
+	if _, _, err := store.Create("Key 1", "test@example.com"); err != nil {
 		t.Fatalf("create 1: %v", err)
 	}
-	if _, _, err := store.Create("Key 2"); err != nil {
+	if _, _, err := store.Create("Key 2", "test@example.com"); err != nil {
 		t.Fatalf("create 2: %v", err)
 	}
 
@@ -71,7 +71,7 @@ func TestAPIKeyList(t *testing.T) {
 func TestAPIKeyDelete(t *testing.T) {
 	store := testAPIKeyStore(t)
 
-	rawKey, key, err := store.Create("To Delete")
+	rawKey, key, err := store.Create("To Delete", "test@example.com")
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestAPIKeyDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("validate after delete: %v", err)
 	}
-	if valid {
+	if valid != "" {
 		t.Error("expected invalid after delete")
 	}
 
@@ -107,10 +107,27 @@ func TestAPIKeyDeleteNotFound(t *testing.T) {
 	}
 }
 
+func TestAPIKeyValidateReturnsEmail(t *testing.T) {
+	store := testAPIKeyStore(t)
+
+	rawKey, _, err := store.Create("Email Key", "alice@example.com")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	email, err := store.Validate(rawKey)
+	if err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	if email != "alice@example.com" {
+		t.Errorf("email = %q, want %q", email, "alice@example.com")
+	}
+}
+
 func TestAPIKeyUpdatesLastUsed(t *testing.T) {
 	store := testAPIKeyStore(t)
 
-	rawKey, _, err := store.Create("Usage Key")
+	rawKey, _, err := store.Create("Usage Key", "test@example.com")
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -141,7 +158,7 @@ func TestAPIKeyUpdatesLastUsed(t *testing.T) {
 func TestAPIKeyPrefix(t *testing.T) {
 	store := testAPIKeyStore(t)
 
-	rawKey, key, err := store.Create("Prefix Key")
+	rawKey, key, err := store.Create("Prefix Key", "test@example.com")
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}

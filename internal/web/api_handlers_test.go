@@ -41,7 +41,7 @@ func testAPIServerWithDB(t *testing.T) (*Server, *sql.DB, string) {
 	}
 
 	// Create an API key for testing
-	rawKey, _, err := srv.apiKeys.Create("test")
+	rawKey, _, err := srv.apiKeys.Create("test", "admin@example.com")
 	if err != nil {
 		t.Fatalf("create api key: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestAPIListComments(t *testing.T) {
 
 	// Add a comment
 	commentRepo := comment.NewRepository(d)
-	if _, err := commentRepo.Add(id, "Test comment"); err != nil {
+	if _, err := commentRepo.Add(id, "Test comment", "test@example.com"); err != nil {
 		t.Fatalf("add comment: %v", err)
 	}
 

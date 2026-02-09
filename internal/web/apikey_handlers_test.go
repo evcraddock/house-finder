@@ -44,7 +44,7 @@ func TestListAPIKeys(t *testing.T) {
 
 	// Create a key first
 	store := auth.NewAPIKeyStore(d)
-	if _, _, err := store.Create("Key 1"); err != nil {
+	if _, _, err := store.Create("Key 1", "admin@example.com"); err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
@@ -74,7 +74,7 @@ func TestDeleteAPIKey(t *testing.T) {
 	cookie := createTestSession(t, d, "admin@example.com")
 
 	store := auth.NewAPIKeyStore(d)
-	_, key, err := store.Create("To Revoke")
+	_, key, err := store.Create("To Revoke", "admin@example.com")
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestBearerTokenAuth(t *testing.T) {
 
 	// Create an API key
 	store := auth.NewAPIKeyStore(d)
-	rawKey, _, err := store.Create("CLI Key")
+	rawKey, _, err := store.Create("CLI Key", "admin@example.com")
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}

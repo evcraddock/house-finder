@@ -106,7 +106,7 @@ func TestMigrations(t *testing.T) {
 		{
 			name:  "comments table exists",
 			table: "comments",
-			cols:  []string{"id", "property_id", "text", "created_at"},
+			cols:  []string{"id", "property_id", "text", "created_at", "author"},
 		},
 		{
 			name:  "auth_tokens table exists",
@@ -126,7 +126,7 @@ func TestMigrations(t *testing.T) {
 		{
 			name:  "api_keys table exists",
 			table: "api_keys",
-			cols:  []string{"id", "name", "key_prefix", "key_hash", "created_at", "last_used_at"},
+			cols:  []string{"id", "name", "key_prefix", "key_hash", "created_at", "last_used_at", "email"},
 		},
 	}
 

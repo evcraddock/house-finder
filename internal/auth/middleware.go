@@ -1,11 +1,27 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 )
+
+type contextKey string
+
+const userEmailKey contextKey = "userEmail"
+
+// WithUserEmail adds the authenticated user's email to the request context.
+func WithUserEmail(r *http.Request, email string) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), userEmailKey, email))
+}
+
+// UserEmailFromContext extracts the authenticated user's email from the request context.
+func UserEmailFromContext(r *http.Request) string {
+	email, _ := r.Context().Value(userEmailKey).(string)
+	return email
+}
 
 // RequireAuth is middleware that redirects unauthenticated web requests to the login page.
 // It skips auth for public paths (login, static assets, auth endpoints).
@@ -110,18 +126,18 @@ func RequireAPIKey(apiKeys *APIKeyStore, sessions *SessionStore, next http.Handl
 			return
 		}
 
-		valid, err := apiKeys.Validate(key)
+		email, err := apiKeys.Validate(key)
 		if err != nil {
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
-		if !valid {
+		if email == "" {
 			apiKeyLimiter.recordFailure(ip)
 			http.Error(w, "Invalid API key", http.StatusUnauthorized)
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, WithUserEmail(r, email))
 	})
 }
 

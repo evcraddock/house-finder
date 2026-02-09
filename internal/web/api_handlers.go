@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/evcraddock/house-finder/internal/auth"
 	"github.com/evcraddock/house-finder/internal/property"
 )
 
@@ -224,7 +225,8 @@ func (s *Server) apiAddComment(w http.ResponseWriter, r *http.Request, id int64)
 		return
 	}
 
-	c, err := s.commentRepo.Add(id, strings.TrimSpace(req.Text))
+	author := auth.UserEmailFromContext(r)
+	c, err := s.commentRepo.Add(id, strings.TrimSpace(req.Text), author)
 	if err != nil {
 		apiError(w, fmt.Sprintf("adding comment: %v", err), http.StatusInternalServerError)
 		return

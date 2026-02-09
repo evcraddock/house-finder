@@ -11,7 +11,7 @@ import (
 func TestAddAndListByPropertyID(t *testing.T) {
 	repo, propID := testSetup(t)
 
-	c, err := repo.Add(propID, "Nice backyard")
+	c, err := repo.Add(propID, "Nice backyard", "test@example.com")
 	if err != nil {
 		t.Fatalf("add: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestAddAndListByPropertyID(t *testing.T) {
 func TestAddEmptyText(t *testing.T) {
 	repo, propID := testSetup(t)
 
-	_, err := repo.Add(propID, "")
+	_, err := repo.Add(propID, "", "test@example.com")
 	if err == nil {
 		t.Fatal("expected error for empty text")
 	}
@@ -64,7 +64,7 @@ func TestListOrderNewestFirst(t *testing.T) {
 
 	texts := []string{"first", "second", "third"}
 	for _, text := range texts {
-		if _, err := repo.Add(propID, text); err != nil {
+		if _, err := repo.Add(propID, text, "test@example.com"); err != nil {
 			t.Fatalf("add %q: %v", text, err)
 		}
 	}
@@ -86,10 +86,42 @@ func TestListOrderNewestFirst(t *testing.T) {
 	}
 }
 
+func TestAuthorStored(t *testing.T) {
+	repo, propID := testSetup(t)
+
+	c, err := repo.Add(propID, "Author test", "alice@example.com")
+	if err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	if c.Author != "alice@example.com" {
+		t.Errorf("author = %q, want %q", c.Author, "alice@example.com")
+	}
+
+	comments, err := repo.ListByPropertyID(propID)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if comments[0].Author != "alice@example.com" {
+		t.Errorf("listed author = %q, want %q", comments[0].Author, "alice@example.com")
+	}
+}
+
+func TestAuthorEmpty(t *testing.T) {
+	repo, propID := testSetup(t)
+
+	c, err := repo.Add(propID, "No author", "")
+	if err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	if c.Author != "" {
+		t.Errorf("author = %q, want empty", c.Author)
+	}
+}
+
 func TestDelete(t *testing.T) {
 	repo, propID := testSetup(t)
 
-	c, err := repo.Add(propID, "To be deleted")
+	c, err := repo.Add(propID, "To be deleted", "test@example.com")
 	if err != nil {
 		t.Fatalf("add: %v", err)
 	}
@@ -145,7 +177,7 @@ func TestCascadeDeleteWithProperty(t *testing.T) {
 
 	// Add comments
 	for _, text := range []string{"comment 1", "comment 2"} {
-		if _, err := repo.Add(propID, text); err != nil {
+		if _, err := repo.Add(propID, text, "test@example.com"); err != nil {
 			t.Fatalf("add comment: %v", err)
 		}
 	}

@@ -32,7 +32,7 @@ func NewAPIKeyStore(db *sql.DB) *APIKeyStore {
 
 // Create generates a new API key with the given name.
 // Returns the raw key (shown once to user) and the stored record.
-func (s *APIKeyStore) Create(name string) (string, *APIKey, error) {
+func (s *APIKeyStore) Create(name, email string) (string, *APIKey, error) {
 	raw, err := generateAPIKey()
 	if err != nil {
 		return "", nil, fmt.Errorf("generating key: %w", err)
@@ -42,8 +42,8 @@ func (s *APIKeyStore) Create(name string) (string, *APIKey, error) {
 	hash := hashAPIKey(raw)
 
 	result, err := s.db.Exec(
-		"INSERT INTO api_keys (name, key_prefix, key_hash) VALUES (?, ?, ?)",
-		name, prefix, hash,
+		"INSERT INTO api_keys (name, key_prefix, key_hash, email) VALUES (?, ?, ?, ?)",
+		name, prefix, hash, email,
 	)
 	if err != nil {
 		return "", nil, fmt.Errorf("storing key: %w", err)
@@ -108,24 +108,29 @@ func (s *APIKeyStore) Delete(id int64) error {
 }
 
 // Validate checks a raw API key against stored hashes.
-// Returns true if valid, and updates last_used_at.
-func (s *APIKeyStore) Validate(rawKey string) (bool, error) {
+// Returns the owner's email if valid (empty string if invalid), and updates last_used_at.
+func (s *APIKeyStore) Validate(rawKey string) (string, error) {
 	hash := hashAPIKey(rawKey)
 
-	result, err := s.db.Exec(
+	var email string
+	err := s.db.QueryRow(
+		"SELECT email FROM api_keys WHERE key_hash = ?", hash,
+	).Scan(&email)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("validating key: %w", err)
+	}
+
+	if _, err := s.db.Exec(
 		"UPDATE api_keys SET last_used_at = ? WHERE key_hash = ?",
 		time.Now(), hash,
-	)
-	if err != nil {
-		return false, fmt.Errorf("validating key: %w", err)
+	); err != nil {
+		return "", fmt.Errorf("updating last_used_at: %w", err)
 	}
 
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("checking affected rows: %w", err)
-	}
-
-	return rows > 0, nil
+	return email, nil
 }
 
 func generateAPIKey() (string, error) {

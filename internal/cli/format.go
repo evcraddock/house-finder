@@ -111,8 +111,12 @@ func printCommentList(comments []*comment.Comment) {
 	}
 
 	for _, c := range comments {
-		fmt.Printf("[%s] #%d\n  %s\n\n",
-			c.CreatedAt.Format("2006-01-02 15:04"), c.ID, c.Text)
+		author := c.Author
+		if author == "" {
+			author = "anonymous"
+		}
+		fmt.Printf("[%s] #%d (%s)\n  %s\n\n",
+			c.CreatedAt.Format("2006-01-02 15:04"), c.ID, author, c.Text)
 	}
 }
 
