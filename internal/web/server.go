@@ -2,13 +2,18 @@
 package web
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/evcraddock/house-finder/internal/auth"
 	"github.com/evcraddock/house-finder/internal/comment"
@@ -167,11 +172,30 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.handler.ServeHTTP(w, r)
 }
 
-// ListenAndServe starts the HTTP server.
+// ListenAndServe starts the HTTP server with graceful shutdown on SIGINT/SIGTERM.
 func (s *Server) ListenAndServe(port int) error {
 	addr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Starting web UI on http://localhost%s\n", addr)
-	return http.ListenAndServe(addr, s)
+
+	srv := &http.Server{Addr: addr, Handler: s}
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.ListenAndServe()
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case sig := <-quit:
+		fmt.Printf("\nReceived %s, shutting down...\n", sig)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		return srv.Shutdown(ctx)
+	}
 }
 
 // handlePropertyRoute routes /property/{id}/* requests.
