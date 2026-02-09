@@ -12,7 +12,8 @@ import (
 
 // apikeyHandlers holds API key management HTTP handlers.
 type apikeyHandlers struct {
-	apiKeys *auth.APIKeyStore
+	apiKeys  *auth.APIKeyStore
+	sessions *auth.SessionStore
 }
 
 type apiKeyResponse struct {
@@ -49,7 +50,11 @@ func (h *apikeyHandlers) handleCreateKey(w http.ResponseWriter, r *http.Request)
 		name = "API Key"
 	}
 
-	rawKey, key, err := h.apiKeys.Create(name)
+	email, sessionErr := h.sessions.Validate(r)
+	if sessionErr != nil {
+		email = "" // key will have no owner if session is missing
+	}
+	rawKey, key, err := h.apiKeys.Create(name, email)
 	if err != nil {
 		log.Printf("Error creating API key: %v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)

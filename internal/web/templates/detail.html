@@ -87,7 +87,7 @@
     {{if .Comments}}
     {{range .Comments}}
     <div class="comment">
-        <div class="meta">{{.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}</div>
+        <div class="meta">{{.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}{{if .Author}} — {{.Author}}{{end}}</div>
         <div>{{.Text}}</div>
     </div>
     {{end}}

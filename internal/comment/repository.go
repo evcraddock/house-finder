@@ -16,14 +16,14 @@ func NewRepository(db *sql.DB) *Repository {
 }
 
 // Add creates a new comment on a property.
-func (r *Repository) Add(propertyID int64, text string) (*Comment, error) {
+func (r *Repository) Add(propertyID int64, text, author string) (*Comment, error) {
 	if text == "" {
 		return nil, fmt.Errorf("comment text is required")
 	}
 
 	result, err := r.db.Exec(
-		"INSERT INTO comments (property_id, text) VALUES (?, ?)",
-		propertyID, text,
+		"INSERT INTO comments (property_id, text, author) VALUES (?, ?, ?)",
+		propertyID, text, author,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("inserting comment: %w", err)
@@ -36,8 +36,8 @@ func (r *Repository) Add(propertyID int64, text string) (*Comment, error) {
 
 	var c Comment
 	err = r.db.QueryRow(
-		"SELECT id, property_id, text, created_at FROM comments WHERE id = ?", id,
-	).Scan(&c.ID, &c.PropertyID, &c.Text, &c.CreatedAt)
+		"SELECT id, property_id, text, author, created_at FROM comments WHERE id = ?", id,
+	).Scan(&c.ID, &c.PropertyID, &c.Text, &c.Author, &c.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("reading back comment: %w", err)
 	}
@@ -48,7 +48,7 @@ func (r *Repository) Add(propertyID int64, text string) (*Comment, error) {
 // ListByPropertyID returns all comments for a property, newest first.
 func (r *Repository) ListByPropertyID(propertyID int64) ([]*Comment, error) {
 	rows, err := r.db.Query(
-		"SELECT id, property_id, text, created_at FROM comments WHERE property_id = ? ORDER BY id DESC",
+		"SELECT id, property_id, text, author, created_at FROM comments WHERE property_id = ? ORDER BY id DESC",
 		propertyID,
 	)
 	if err != nil {
@@ -63,7 +63,7 @@ func (r *Repository) ListByPropertyID(propertyID int64) ([]*Comment, error) {
 	var comments []*Comment
 	for rows.Next() {
 		var c Comment
-		if err := rows.Scan(&c.ID, &c.PropertyID, &c.Text, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.PropertyID, &c.Text, &c.Author, &c.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scanning comment: %w", err)
 		}
 		comments = append(comments, &c)

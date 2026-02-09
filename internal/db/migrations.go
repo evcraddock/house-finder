@@ -76,5 +76,52 @@ func migrate(db *sql.DB) error {
 			return fmt.Errorf("migration %d: %w", i, err)
 		}
 	}
+
+	// Column additions (idempotent — checks if column exists first)
+	columnMigrations := []struct {
+		table, column, definition string
+	}{
+		{"comments", "author", "TEXT NOT NULL DEFAULT ''"},
+		{"api_keys", "email", "TEXT NOT NULL DEFAULT ''"},
+	}
+
+	for _, cm := range columnMigrations {
+		if err := addColumnIfNotExists(db, cm.table, cm.column, cm.definition); err != nil {
+			return fmt.Errorf("adding %s.%s: %w", cm.table, cm.column, err)
+		}
+	}
+
 	return nil
+}
+
+// addColumnIfNotExists adds a column to a table if it doesn't already exist.
+func addColumnIfNotExists(db *sql.DB, table, column, definition string) error {
+	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return fmt.Errorf("checking table info: %w", err)
+	}
+	defer func() {
+		if cerr := rows.Close(); cerr != nil {
+			fmt.Printf("warning: closing rows: %v\n", cerr)
+		}
+	}()
+
+	for rows.Next() {
+		var cid int
+		var name, colType string
+		var notNull, pk int
+		var dfltValue interface{}
+		if err := rows.Scan(&cid, &name, &colType, &notNull, &dfltValue, &pk); err != nil {
+			return fmt.Errorf("scanning column info: %w", err)
+		}
+		if name == column {
+			return nil // column already exists
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterating columns: %w", err)
+	}
+
+	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, definition))
+	return err
 }

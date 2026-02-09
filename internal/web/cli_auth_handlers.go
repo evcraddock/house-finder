@@ -105,12 +105,13 @@ func (h *cliAuthHandlers) handleCLIAuthVerify(w http.ResponseWriter, r *http.Req
 // handleCLIAuthComplete generates an API key and displays it.
 // Requires a valid session (user just logged in).
 func (h *cliAuthHandlers) handleCLIAuthComplete(w http.ResponseWriter, r *http.Request) {
-	if _, err := h.sessions.Validate(r); err != nil {
+	email, err := h.sessions.Validate(r)
+	if err != nil {
 		http.Redirect(w, r, "/cli/auth", http.StatusSeeOther)
 		return
 	}
 
-	rawKey, _, err := h.apiKeys.Create("CLI")
+	rawKey, _, err := h.apiKeys.Create("CLI", email)
 	if err != nil {
 		log.Printf("Error creating API key: %v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)

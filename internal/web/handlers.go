@@ -81,7 +81,11 @@ func (s *Server) handleCommentPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := s.commentRepo.Add(id, text); err != nil {
+	author, sessionErr := s.sessions.Validate(r)
+	if sessionErr != nil {
+		author = ""
+	}
+	if _, err := s.commentRepo.Add(id, text, author); err != nil {
 		http.Error(w, fmt.Sprintf("Error adding comment: %v", err), http.StatusInternalServerError)
 		return
 	}
