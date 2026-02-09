@@ -12,6 +12,7 @@ import (
 
 	"github.com/evcraddock/house-finder/internal/auth"
 	"github.com/evcraddock/house-finder/internal/comment"
+	"github.com/evcraddock/house-finder/internal/mls"
 	"github.com/evcraddock/house-finder/internal/property"
 )
 
@@ -24,6 +25,7 @@ var staticFS embed.FS
 // Server is the web UI HTTP server.
 type Server struct {
 	propRepo    *property.Repository
+	propService *property.Service
 	commentRepo *comment.Repository
 	sessions    *auth.SessionStore
 	passkeys    *auth.PasskeyStore
@@ -33,7 +35,8 @@ type Server struct {
 }
 
 // NewServer creates a web server with the given database and auth config.
-func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
+// mlsClient is optional — if nil, the POST /api/properties endpoint returns 503.
+func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Server, error) {
 	funcMap := template.FuncMap{
 		"formatPrice":  tmplFormatPrice,
 		"formatFloat":  tmplFormatFloat,
@@ -56,13 +59,19 @@ func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 	apiKeys := auth.NewAPIKeyStore(db)
 	mailer := auth.NewMailer(authCfg)
 
+	propRepo := property.NewRepository(db)
+
 	s := &Server{
-		propRepo:    property.NewRepository(db),
+		propRepo:    propRepo,
 		commentRepo: comment.NewRepository(db),
 		sessions:    sessions,
 		passkeys:    passkeys,
 		apiKeys:     apiKeys,
 		templates:   tmpl,
+	}
+
+	if len(mlsClient) > 0 && mlsClient[0] != nil {
+		s.propService = property.NewService(propRepo, mlsClient[0])
 	}
 
 	mux := http.NewServeMux()
@@ -119,6 +128,10 @@ func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 	akh := &apikeyHandlers{apiKeys: apiKeys}
 	mux.HandleFunc("/api/keys", akh.handleAPIKeysRoute)
 	mux.HandleFunc("/api/keys/", akh.handleAPIKeysRoute)
+
+	// REST API endpoints (bearer token auth via RequireAPIKey middleware)
+	mux.HandleFunc("/api/properties", s.handleAPIProperties)
+	mux.HandleFunc("/api/properties/", s.handleAPIProperties)
 
 	// Protected routes
 	mux.HandleFunc("/", s.handleList)

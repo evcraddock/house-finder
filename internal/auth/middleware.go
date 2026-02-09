@@ -47,26 +47,29 @@ const (
 	rateLimitMaxFail = 10
 )
 
-// recordFailure records a failed attempt and returns true if rate limited.
-func (rl *rateLimiter) recordFailure(ip string) bool {
+// isLimited returns true if the IP has exceeded the rate limit.
+func (rl *rateLimiter) isLimited(ip string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
-	now := time.Now()
-	cutoff := now.Add(-rateLimitWindow)
-
-	// Prune old entries
+	cutoff := time.Now().Add(-rateLimitWindow)
 	valid := rl.attempts[ip][:0]
 	for _, t := range rl.attempts[ip] {
 		if t.After(cutoff) {
 			valid = append(valid, t)
 		}
 	}
-
-	valid = append(valid, now)
 	rl.attempts[ip] = valid
 
-	return len(valid) > rateLimitMaxFail
+	return len(valid) >= rateLimitMaxFail
+}
+
+// recordFailure records a failed attempt for the IP.
+func (rl *rateLimiter) recordFailure(ip string) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	rl.attempts[ip] = append(rl.attempts[ip], time.Now())
 }
 
 // RequireAPIKey is middleware that validates Bearer token auth for /api/ routes.
@@ -101,8 +104,8 @@ func RequireAPIKey(apiKeys *APIKeyStore, sessions *SessionStore, next http.Handl
 
 		key := strings.TrimPrefix(authHeader, "Bearer ")
 
-		// Check rate limit before validating
-		if apiKeyLimiter.recordFailure(ip) {
+		// Check rate limit before expensive validation
+		if apiKeyLimiter.isLimited(ip) {
 			http.Error(w, "Too many requests", http.StatusTooManyRequests)
 			return
 		}
@@ -113,6 +116,7 @@ func RequireAPIKey(apiKeys *APIKeyStore, sessions *SessionStore, next http.Handl
 			return
 		}
 		if !valid {
+			apiKeyLimiter.recordFailure(ip)
 			http.Error(w, "Invalid API key", http.StatusUnauthorized)
 			return
 		}
