@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings — House Finder</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<script>
+    (function(){var t=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<body>
+    <header>
+        <h1><a href="/">House Finder</a></h1>
+        <nav class="header-nav">
+            <a href="/settings" class="nav-link active">Settings</a>
+            <a href="/auth/logout" class="nav-link">Logout</a>
+        </nav>
+        <button class="theme-toggle" onclick="var d=document.documentElement;var t=d.getAttribute('data-theme')==='dark'?'light':'dark';d.setAttribute('data-theme',t);localStorage.setItem('theme',t);this.textContent=t==='dark'?'☀️':'🌙';" id="theme-btn">
+            <script>document.write(localStorage.getItem('theme')==='dark'?'☀️':'🌙')</script>
+        </button>
+    </header>
+    <main>
+        <a href="/" class="back-link">← Properties</a>
+        <div class="card">
+            <h2>Passkeys</h2>
+            <p class="settings-info">Passkeys let you sign in with your fingerprint, face, or device PIN instead of a magic link email.</p>
+
+            {{if .Flash}}
+            <div class="flash">{{.Flash}}</div>
+            {{end}}
+
+            {{if .Passkeys}}
+            <table class="passkey-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Passkeys}}
+                    <tr>
+                        <td>{{.Name}}</td>
+                        <td>
+                            <form method="POST" action="/settings/passkey/delete" onsubmit="return confirm('Remove this passkey?')">
+                                <input type="hidden" name="id" value="{{.ID}}">
+                                <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <p class="empty">No passkeys registered yet.</p>
+            {{end}}
+
+            <div class="passkey-register">
+                <input type="text" id="passkey-name" placeholder="Passkey name (e.g. MacBook)" class="login-input" style="max-width:300px;display:inline-block;margin-right:0.5rem;">
+                <button id="register-passkey-btn" class="btn" onclick="registerPasskey()">Register Passkey</button>
+                <div id="passkey-status" class="passkey-status"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    async function registerPasskey() {
+        const statusEl = document.getElementById('passkey-status');
+        const nameInput = document.getElementById('passkey-name');
+        const name = nameInput.value.trim() || 'Passkey';
+        statusEl.textContent = 'Starting registration...';
+
+        try {
+            // 1. Get registration options from server
+            const beginResp = await fetch('/passkey/register/begin');
+            if (!beginResp.ok) throw new Error('Failed to start registration');
+            const options = await beginResp.json();
+
+            // 2. Decode base64url fields for WebAuthn API
+            options.publicKey.challenge = base64urlToBuffer(options.publicKey.challenge);
+            options.publicKey.user.id = base64urlToBuffer(options.publicKey.user.id);
+            if (options.publicKey.excludeCredentials) {
+                options.publicKey.excludeCredentials = options.publicKey.excludeCredentials.map(c => ({
+                    ...c,
+                    id: base64urlToBuffer(c.id)
+                }));
+            }
+
+            // 3. Create credential via browser WebAuthn API
+            statusEl.textContent = 'Waiting for authenticator...';
+            const credential = await navigator.credentials.create(options);
+
+            // 4. Encode response for server
+            const attestationResponse = {
+                id: credential.id,
+                rawId: bufferToBase64url(credential.rawId),
+                type: credential.type,
+                response: {
+                    attestationObject: bufferToBase64url(credential.response.attestationObject),
+                    clientDataJSON: bufferToBase64url(credential.response.clientDataJSON)
+                }
+            };
+
+            // Include transports if available
+            if (credential.response.getTransports) {
+                attestationResponse.response.transports = credential.response.getTransports();
+            }
+
+            // 5. Send to server
+            const finishResp = await fetch('/passkey/register/finish?name=' + encodeURIComponent(name), {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(attestationResponse)
+            });
+
+            if (!finishResp.ok) throw new Error('Registration failed');
+
+            statusEl.textContent = '✓ Passkey registered!';
+            statusEl.className = 'passkey-status passkey-success';
+            setTimeout(() => location.reload(), 1000);
+        } catch (err) {
+            statusEl.textContent = '✗ ' + err.message;
+            statusEl.className = 'passkey-status passkey-error';
+        }
+    }
+
+    function base64urlToBuffer(base64url) {
+        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        const pad = base64.length % 4 === 0 ? '' : '='.repeat(4 - (base64.length % 4));
+        const binary = atob(base64 + pad);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes.buffer;
+    }
+
+    function bufferToBase64url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+    </script>
+</body>
+</html>

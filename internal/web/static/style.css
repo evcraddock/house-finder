@@ -220,3 +220,32 @@ td.rating { font-size: 1.1rem; }
 [data-theme="dark"] .login-input:focus { border-color: #60a5fa; box-shadow: 0 0 0 2px rgba(96,165,250,0.2); }
 [data-theme="dark"] .login-info { color: #9ca3af; }
 [data-theme="dark"] .flash-error { background: #451a1a; color: #fca5a5; }
+
+/* Header nav */
+.header-nav { display: flex; gap: 1rem; align-items: center; }
+.nav-link { font-size: 0.9rem; text-decoration: none; }
+.nav-link.active { font-weight: 600; }
+header { display: flex; justify-content: space-between; align-items: center; }
+
+/* Settings page */
+.settings-info { color: #6b7280; margin-bottom: 1rem; font-size: 0.95rem; }
+.passkey-table { margin-bottom: 1rem; }
+.passkey-table th, .passkey-table td { padding: 0.5rem 1rem; }
+.btn-sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+.passkey-register { margin-top: 1rem; }
+.passkey-status { margin-top: 0.5rem; font-size: 0.9rem; }
+.passkey-success { color: #16a34a; }
+.passkey-error { color: #dc2626; }
+[data-theme="dark"] .settings-info { color: #9ca3af; }
+[data-theme="dark"] .passkey-success { color: #4ade80; }
+[data-theme="dark"] .passkey-error { color: #f87171; }
+
+/* Login divider */
+.login-section { margin-bottom: 0.5rem; }
+.login-divider { display: flex; align-items: center; margin: 1rem 0; color: #9ca3af; font-size: 0.9rem; }
+.login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: #d1d5db; }
+.login-divider span { padding: 0 1rem; }
+.passkey-btn { background: #059669; margin-bottom: 0; }
+.passkey-btn:hover { background: #047857; }
+[data-theme="dark"] .login-divider::before, [data-theme="dark"] .login-divider::after { background: #4b5563; }
+[data-theme="dark"] .login-divider { color: #6b7280; }
