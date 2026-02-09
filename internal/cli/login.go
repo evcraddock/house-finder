@@ -52,12 +52,8 @@ func runLogin(serverFlag string) error {
 	}
 
 	key = strings.TrimSpace(key)
-	if key == "" {
-		return fmt.Errorf("no API key provided")
-	}
-
-	if !strings.HasPrefix(key, "hf_") {
-		return fmt.Errorf("invalid API key format (should start with hf_)")
+	if err := validateAPIKey(key); err != nil {
+		return err
 	}
 
 	// Load existing config to preserve other fields
@@ -76,6 +72,17 @@ func runLogin(serverFlag string) error {
 	}
 
 	fmt.Println("✓ API key saved. You're logged in!")
+	return nil
+}
+
+// validateAPIKey checks that the key is non-empty and has the expected prefix.
+func validateAPIKey(key string) error {
+	if key == "" {
+		return fmt.Errorf("no API key provided")
+	}
+	if !strings.HasPrefix(key, "hf_") {
+		return fmt.Errorf("invalid API key format (should start with hf_)")
+	}
 	return nil
 }
 

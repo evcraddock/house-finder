@@ -32,7 +32,11 @@ func runStatus() error {
 		return nil
 	}
 
-	fmt.Printf("API Key: %s…\n", apiKey[:8])
+	prefix := apiKey
+	if len(prefix) > 8 {
+		prefix = prefix[:8]
+	}
+	fmt.Printf("API Key: %s…\n", prefix)
 
 	// Test the connection with a simple API request
 	client := &http.Client{Timeout: 5 * time.Second}
