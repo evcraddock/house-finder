@@ -1,9 +1,9 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+
+	"github.com/evcraddock/house-finder/internal/web"
 )
 
 func newServeCmd() *cobra.Command {
@@ -25,8 +25,16 @@ func newServeCmd() *cobra.Command {
 }
 
 func runServe(port int) error {
-	// Web UI will be implemented in a later task.
-	fmt.Printf("Starting web UI on http://localhost:%d\n", port)
-	fmt.Println("(not yet implemented — see task #1642)")
-	return nil
+	database, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer closeDB(database)
+
+	srv, err := web.NewServer(database)
+	if err != nil {
+		return err
+	}
+
+	return srv.ListenAndServe(port)
 }
