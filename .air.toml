@@ -10,6 +10,7 @@ tmp_dir = "tmp"
   exclude_regex = ["_test\\.go$"]
   include_ext = ["go", "html", "css"]
   kill_delay = 500
+  send_interrupt = true
 
 [log]
   time = false

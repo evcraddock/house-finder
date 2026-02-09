@@ -19,6 +19,7 @@ dev: ## Start the dev environment (daemonized)
 		echo "Dev environment already running"; \
 		overmind ps -s $(SOCKET); \
 	else \
+		$(MAKE) -s _kill-orphan-hf; \
 		rm -f $(SOCKET); \
 		overmind start -f Procfile.dev -s $(SOCKET) -D; \
 		sleep 2; \
@@ -29,6 +30,18 @@ dev-stop: ## Stop the dev environment
 	@if [ -S $(SOCKET) ]; then overmind quit -s $(SOCKET) || true; fi
 	@rm -f $(SOCKET)
 	@tmux list-sessions 2>/dev/null | grep overmind | cut -d: -f1 | xargs -r -n1 tmux kill-session -t 2>/dev/null || true
+	@$(MAKE) -s _kill-orphan-hf
+
+_kill-orphan-hf: ## Kill orphaned hf processes on port 8080
+	@PID=$$(fuser 8080/tcp 2>/dev/null | awk '{print $$1}'); \
+	if [ -n "$$PID" ]; then \
+		CMD=$$(ps -p $$PID -o comm= 2>/dev/null); \
+		if [ "$$CMD" = "hf" ]; then \
+			echo "Killing orphaned hf process (PID $$PID) on port 8080"; \
+			kill $$PID 2>/dev/null || true; \
+			sleep 1; \
+		fi; \
+	fi
 
 dev-status: ## Check if dev environment is running
 	@if [ -S $(SOCKET) ] && overmind ps -s $(SOCKET) > /dev/null 2>&1; then \
