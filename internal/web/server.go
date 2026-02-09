@@ -19,6 +19,7 @@ import (
 	"github.com/evcraddock/house-finder/internal/comment"
 	"github.com/evcraddock/house-finder/internal/mls"
 	"github.com/evcraddock/house-finder/internal/property"
+	"github.com/evcraddock/house-finder/internal/visit"
 )
 
 //go:embed templates/*.html
@@ -32,6 +33,7 @@ type Server struct {
 	propRepo    *property.Repository
 	propService *property.Service
 	commentRepo *comment.Repository
+	visitRepo   *visit.Repository
 	sessions    *auth.SessionStore
 	passkeys    *auth.PasskeyStore
 	apiKeys     *auth.APIKeyStore
@@ -71,6 +73,7 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 	s := &Server{
 		propRepo:    propRepo,
 		commentRepo: comment.NewRepository(db),
+		visitRepo:   visit.NewRepository(db),
 		sessions:    sessions,
 		passkeys:    passkeys,
 		apiKeys:     apiKeys,

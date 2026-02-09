@@ -9,6 +9,7 @@ import (
 
 	"github.com/evcraddock/house-finder/internal/comment"
 	"github.com/evcraddock/house-finder/internal/property"
+	"github.com/evcraddock/house-finder/internal/visit"
 )
 
 // printJSON marshals v as indented JSON and writes it to stdout.
@@ -153,6 +154,22 @@ func formatRating(rating int64) string {
 		rating = 4
 	}
 	return strings.Repeat("★", int(rating)) + strings.Repeat("☆", 4-int(rating))
+}
+
+// printVisits prints visits in text format.
+func printVisits(visits []*visit.Visit) {
+	if len(visits) == 0 {
+		fmt.Println("No visits recorded.")
+		return
+	}
+
+	for _, v := range visits {
+		fmt.Printf("[%s] %s (#%d)\n", v.VisitDate, v.VisitType.Label(), v.ID)
+		if v.Notes != "" {
+			fmt.Printf("  %s\n", v.Notes)
+		}
+		fmt.Println()
+	}
 }
 
 // truncate shortens a string to maxLen, adding "..." if truncated.

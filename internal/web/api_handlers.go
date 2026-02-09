@@ -9,6 +9,7 @@ import (
 
 	"github.com/evcraddock/house-finder/internal/auth"
 	"github.com/evcraddock/house-finder/internal/property"
+	"github.com/evcraddock/house-finder/internal/visit"
 )
 
 // apiError writes a JSON error response.
@@ -61,6 +62,25 @@ func (s *Server) handleAPIProperties(w http.ResponseWriter, r *http.Request) {
 			s.apiListComments(w, id)
 		case http.MethodPost:
 			s.apiAddComment(w, r, id)
+		default:
+			apiError(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+		return
+	}
+
+	// /api/properties/{id}/visits
+	if strings.HasSuffix(path, "/visits") {
+		idStr := strings.TrimSuffix(path, "/visits")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			apiError(w, "invalid property ID", http.StatusBadRequest)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			s.apiListVisits(w, id)
+		case http.MethodPost:
+			s.apiAddVisit(w, r, id)
 		default:
 			apiError(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -148,7 +168,7 @@ func (s *Server) apiAddProperty(w http.ResponseWriter, r *http.Request) {
 	apiJSON(w, p, http.StatusCreated)
 }
 
-// apiGetProperty returns a single property with comments.
+// apiGetProperty returns a single property with comments and visits.
 func (s *Server) apiGetProperty(w http.ResponseWriter, id int64) {
 	p, err := s.propRepo.GetByID(id)
 	if err != nil {
@@ -162,12 +182,19 @@ func (s *Server) apiGetProperty(w http.ResponseWriter, id int64) {
 		return
 	}
 
+	visits, err := s.visitRepo.ListByPropertyID(id)
+	if err != nil {
+		apiError(w, fmt.Sprintf("loading visits: %v", err), http.StatusInternalServerError)
+		return
+	}
+
 	type response struct {
 		Property *property.Property `json:"property"`
 		Comments interface{}        `json:"comments"`
+		Visits   interface{}        `json:"visits"`
 	}
 
-	apiJSON(w, response{Property: p, Comments: comments}, http.StatusOK)
+	apiJSON(w, response{Property: p, Comments: comments, Visits: visits}, http.StatusOK)
 }
 
 // apiDeleteProperty removes a property and its comments.
@@ -233,4 +260,52 @@ func (s *Server) apiAddComment(w http.ResponseWriter, r *http.Request, id int64)
 	}
 
 	apiJSON(w, c, http.StatusCreated)
+}
+
+// apiListVisits returns visits for a property.
+func (s *Server) apiListVisits(w http.ResponseWriter, id int64) {
+	visits, err := s.visitRepo.ListByPropertyID(id)
+	if err != nil {
+		apiError(w, fmt.Sprintf("listing visits: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if visits == nil {
+		visits = make([]*visit.Visit, 0)
+	}
+
+	apiJSON(w, visits, http.StatusOK)
+}
+
+// apiAddVisit records a visit to a property.
+func (s *Server) apiAddVisit(w http.ResponseWriter, r *http.Request, id int64) {
+	var req struct {
+		VisitDate string `json:"visit_date"`
+		VisitType string `json:"visit_type"`
+		Notes     string `json:"notes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apiError(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+	if req.VisitDate == "" {
+		apiError(w, "visit_date is required (YYYY-MM-DD)", http.StatusBadRequest)
+		return
+	}
+	if req.VisitType == "" {
+		apiError(w, "visit_type is required (showing, drive_by, open_house)", http.StatusBadRequest)
+		return
+	}
+
+	v, err := s.visitRepo.Add(id, req.VisitDate, visit.VisitType(req.VisitType), req.Notes)
+	if err != nil {
+		if strings.Contains(err.Error(), "invalid") {
+			apiError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		apiError(w, fmt.Sprintf("adding visit: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	apiJSON(w, v, http.StatusCreated)
 }

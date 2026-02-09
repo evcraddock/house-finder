@@ -17,6 +17,7 @@ type listData struct {
 type detailData struct {
 	Property *property.Property
 	Comments interface{}
+	Visits   interface{}
 	IsAdmin  bool
 }
 

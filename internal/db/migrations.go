@@ -78,6 +78,23 @@ func migrate(db *sql.DB) error {
 	}
 
 	// Column additions (idempotent — checks if column exists first)
+	// Table additions (idempotent via IF NOT EXISTS)
+	tableMigrations := []string{
+		`CREATE TABLE IF NOT EXISTS visits (
+			id          INTEGER PRIMARY KEY AUTOINCREMENT,
+			property_id INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+			visit_date  TEXT    NOT NULL,
+			visit_type  TEXT    NOT NULL,
+			notes       TEXT    NOT NULL DEFAULT '',
+			created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+	}
+	for _, m := range tableMigrations {
+		if _, err := db.Exec(m); err != nil {
+			return fmt.Errorf("table migration: %w", err)
+		}
+	}
+
 	columnMigrations := []struct {
 		table, column, definition string
 	}{
