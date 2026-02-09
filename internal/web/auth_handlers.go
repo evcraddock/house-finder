@@ -1,7 +1,7 @@
 package web
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -55,13 +55,13 @@ func (h *authHandlers) handleLoginSubmit(w http.ResponseWriter, r *http.Request)
 		token, err := h.tokens.Create(email)
 		if err != nil {
 			// Log internally but don't reveal to user
-			fmt.Printf("Error creating token: %v\n", err)
+			log.Printf("Error creating token: %v\n", err)
 			h.render(w, "login.html", loginData{Message: successMsg})
 			return
 		}
 
 		if _, err := h.mailer.SendMagicLink(email, token); err != nil {
-			fmt.Printf("Error sending magic link: %v\n", err)
+			log.Printf("Error sending magic link: %v\n", err)
 		}
 	}
 
@@ -83,7 +83,7 @@ func (h *authHandlers) handleVerify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.sessions.Create(w, email); err != nil {
-		fmt.Printf("Error creating session: %v\n", err)
+		log.Printf("Error creating session: %v\n", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -94,7 +94,7 @@ func (h *authHandlers) handleVerify(w http.ResponseWriter, r *http.Request) {
 // handleLogout destroys the session and redirects to login.
 func (h *authHandlers) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if err := h.sessions.Destroy(w, r); err != nil {
-		fmt.Printf("Error destroying session: %v\n", err)
+		log.Printf("Error destroying session: %v\n", err)
 	}
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }

@@ -49,7 +49,7 @@ func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 	}
 
 	tokens := auth.NewTokenStore(db)
-	sessions := auth.NewSessionStore(db)
+	sessions := auth.NewSessionStore(db, !authCfg.DevMode)
 	mailer := auth.NewMailer(authCfg)
 
 	s := &Server{

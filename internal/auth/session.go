@@ -16,12 +16,14 @@ const (
 
 // SessionStore manages sessions in SQLite.
 type SessionStore struct {
-	db *sql.DB
+	db           *sql.DB
+	secureCookie bool
 }
 
 // NewSessionStore creates a session store.
-func NewSessionStore(db *sql.DB) *SessionStore {
-	return &SessionStore{db: db}
+// When secure is true, session cookies are set with the Secure flag (requires HTTPS).
+func NewSessionStore(db *sql.DB, secure bool) *SessionStore {
+	return &SessionStore{db: db, secureCookie: secure}
 }
 
 // Create generates a new session for the given email and sets the cookie.
@@ -46,6 +48,7 @@ func (s *SessionStore) Create(w http.ResponseWriter, email string) error {
 		Path:     "/",
 		Expires:  expiresAt,
 		HttpOnly: true,
+		Secure:   s.secureCookie,
 		SameSite: http.SameSiteLaxMode,
 	})
 

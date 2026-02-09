@@ -41,7 +41,7 @@ func TestRequireAuthAllowsAuthenticated(t *testing.T) {
 			t.Errorf("close: %v", err)
 		}
 	})
-	store := NewSessionStore(d)
+	store := NewSessionStore(d, false)
 
 	// Create a session
 	w := httptest.NewRecorder()

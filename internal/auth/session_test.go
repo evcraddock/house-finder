@@ -114,5 +114,5 @@ func testSessionStore(t *testing.T) *SessionStore {
 			t.Errorf("close db: %v", err)
 		}
 	})
-	return NewSessionStore(d)
+	return NewSessionStore(d, false)
 }

@@ -41,37 +41,33 @@ func (s *TokenStore) Create(email string) (string, error) {
 }
 
 // Validate checks a token and returns the associated email.
-// The token is marked as used and cannot be reused.
+// The token is marked as used atomically and cannot be reused.
 func (s *TokenStore) Validate(token string) (string, error) {
-	var email string
-	var used int
-	var expiresAt time.Time
-
-	err := s.db.QueryRow(
-		"SELECT email, used, expires_at FROM auth_tokens WHERE token = ?",
-		token,
-	).Scan(&email, &used, &expiresAt)
-	if err == sql.ErrNoRows {
-		return "", fmt.Errorf("invalid token")
-	}
+	// Atomically mark unused, unexpired token as used and return the email.
+	// This avoids a TOCTOU race between SELECT and UPDATE.
+	result, err := s.db.Exec(
+		"UPDATE auth_tokens SET used = 1 WHERE token = ? AND used = 0 AND expires_at > ?",
+		token, time.Now(),
+	)
 	if err != nil {
-		return "", fmt.Errorf("querying token: %w", err)
+		return "", fmt.Errorf("validating token: %w", err)
 	}
 
-	if used != 0 {
-		return "", fmt.Errorf("token already used")
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return "", fmt.Errorf("checking affected rows: %w", err)
+	}
+	if rows == 0 {
+		return "", fmt.Errorf("invalid, expired, or already used token")
 	}
 
-	if time.Now().After(expiresAt) {
-		return "", fmt.Errorf("token expired")
-	}
-
-	// Mark as used
-	if _, err := s.db.Exec(
-		"UPDATE auth_tokens SET used = 1 WHERE token = ?",
+	var email string
+	err = s.db.QueryRow(
+		"SELECT email FROM auth_tokens WHERE token = ?",
 		token,
-	); err != nil {
-		return "", fmt.Errorf("marking token used: %w", err)
+	).Scan(&email)
+	if err != nil {
+		return "", fmt.Errorf("reading token email: %w", err)
 	}
 
 	return email, nil
