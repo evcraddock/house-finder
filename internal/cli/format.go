@@ -121,9 +121,8 @@ func printCommentSingle(c *comment.Comment) {
 	fmt.Printf("Comment #%d added.\n  %s\n", c.ID, c.Text)
 }
 
-// formatPrice formats cents as a dollar string with commas.
-func formatPrice(cents int64) string {
-	dollars := cents / 100
+// formatPrice formats a dollar amount as a string with commas.
+func formatPrice(dollars int64) string {
 	s := fmt.Sprintf("%d", dollars)
 
 	// Add commas

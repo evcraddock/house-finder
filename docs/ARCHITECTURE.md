@@ -25,7 +25,7 @@ CREATE TABLE properties (
     address       TEXT    NOT NULL,
     mpr_id        TEXT    NOT NULL UNIQUE,
     realtor_url   TEXT    NOT NULL,
-    price         INTEGER,            -- cents
+    price         INTEGER,            -- dollars
     bedrooms      REAL,
     bathrooms     REAL,
     sqft          INTEGER,

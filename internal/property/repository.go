@@ -155,27 +155,56 @@ func parseRawJSON(raw json.RawMessage) parsedFields {
 		return f
 	}
 
-	// The API response may nest under "data" or "property"
-	target := data
-	for _, key := range []string{"data", "property"} {
-		if nested, ok := target[key]; ok {
-			var m map[string]json.RawMessage
-			if err := json.Unmarshal(nested, &m); err == nil {
-				target = m
-			}
+	// Navigate into nested "data" key if present
+	if nested, ok := data["data"]; ok {
+		var m map[string]json.RawMessage
+		if err := json.Unmarshal(nested, &m); err == nil {
+			data = m
 		}
 	}
 
-	f.Price = jsonInt64(target, "list_price", "price")
-	f.Bedrooms = jsonFloat64(target, "beds", "bedrooms")
-	f.Bathrooms = jsonFloat64(target, "baths", "bathrooms", "baths_consolidated", "baths_full")
-	f.Sqft = jsonInt64(target, "sqft", "building_size", "living_area")
-	f.YearBuilt = jsonInt64(target, "year_built")
-	f.PropertyType = jsonString(target, "prop_type", "property_type", "type")
-	f.Status = jsonString(target, "prop_status", "status")
+	// Extract the "description" sub-object where beds/baths/sqft live
+	var desc map[string]json.RawMessage
+	if raw, ok := data["description"]; ok {
+		if err := json.Unmarshal(raw, &desc); err != nil {
+			desc = nil
+		}
+	}
 
-	// lot_size might be nested or a direct field
-	f.LotSize = jsonFloat64(target, "lot_sqft", "lot_size")
+	// Price lives at the top level
+	f.Price = jsonInt64(data, "list_price", "price")
+	f.Status = jsonString(data, "prop_status", "status")
+
+	// Beds, baths, sqft, year_built, type, lot_sqft live in description
+	if desc != nil {
+		f.Bedrooms = jsonFloat64(desc, "beds", "bedrooms")
+		f.Bathrooms = jsonFloat64(desc, "baths", "bathrooms", "baths_consolidated")
+		f.Sqft = jsonInt64(desc, "sqft", "building_size", "living_area")
+		f.YearBuilt = jsonInt64(desc, "year_built")
+		f.PropertyType = jsonString(desc, "type", "prop_type", "property_type")
+		f.LotSize = jsonFloat64(desc, "lot_sqft", "lot_size")
+	}
+
+	// Fallback: try top level for everything if description didn't have it
+	if f.Bedrooms == nil {
+		f.Bedrooms = jsonFloat64(data, "beds", "bedrooms")
+	}
+	if f.Bathrooms == nil {
+		f.Bathrooms = jsonFloat64(data, "baths", "bathrooms", "baths_consolidated")
+	}
+	if f.Sqft == nil {
+		f.Sqft = jsonInt64(data, "sqft", "building_size", "living_area")
+	}
+	if f.YearBuilt == nil {
+		f.YearBuilt = jsonInt64(data, "year_built")
+	}
+	if f.PropertyType == nil {
+		f.PropertyType = jsonString(data, "type", "prop_type", "property_type")
+	}
+	if f.LotSize == nil {
+		f.LotSize = jsonFloat64(data, "lot_sqft", "lot_size")
+	}
+
 	// Convert lot sqft to acres if it seems like sqft (> 100)
 	if f.LotSize != nil && *f.LotSize > 100 {
 		acres := *f.LotSize / 43560.0

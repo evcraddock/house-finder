@@ -300,13 +300,20 @@ func TestParseRawJSON(t *testing.T) {
 			},
 		},
 		{
-			name: "nested under data.property",
-			raw:  `{"data": {"property": {"price": 300000, "bedrooms": 4, "bathrooms": 3, "living_area": 2200}}}`,
+			name: "nested under data with description",
+			raw:  `{"data": {"list_price": 300000, "status": "for_sale", "description": {"beds": 4, "baths": 3, "sqft": 2200, "year_built": 2010, "type": "single_family", "lot_sqft": 8712}}}`,
 			wantFunc: func(t *testing.T, f parsedFields) {
 				assertInt64(t, "price", f.Price, 300000)
 				assertFloat64(t, "beds", f.Bedrooms, 4)
 				assertFloat64(t, "baths", f.Bathrooms, 3)
 				assertInt64(t, "sqft", f.Sqft, 2200)
+				assertInt64(t, "year_built", f.YearBuilt, 2010)
+				assertString(t, "type", f.PropertyType, "single_family")
+				if f.LotSize == nil {
+					t.Error("lot_size is nil")
+				} else if *f.LotSize < 0.19 || *f.LotSize > 0.21 {
+					t.Errorf("lot_size = %f, want ~0.20 acres", *f.LotSize)
+				}
 			},
 		},
 		{
