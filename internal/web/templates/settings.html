@@ -22,6 +22,27 @@
     </header>
     <main>
         <a href="/" class="back-link">← Properties</a>
+
+        <!-- API Keys -->
+        <div class="card">
+            <h2>API Keys</h2>
+            <p class="settings-info">API keys let the CLI and other tools access House Finder programmatically.</p>
+
+            <div id="apikey-list"></div>
+
+            <div class="apikey-create">
+                <input type="text" id="apikey-name" placeholder="Key name (e.g. laptop)" class="login-input" style="max-width:300px;display:inline-block;margin-right:0.5rem;">
+                <button class="btn" onclick="createAPIKey()">Generate Key</button>
+            </div>
+            <div id="apikey-status" class="passkey-status"></div>
+            <div id="apikey-reveal" class="apikey-reveal" style="display:none;">
+                <p class="apikey-warning">⚠️ Copy this key now — it won't be shown again.</p>
+                <code id="apikey-value" class="apikey-value"></code>
+                <button class="btn btn-sm" onclick="copyAPIKey()">Copy</button>
+            </div>
+        </div>
+
+        <!-- Passkeys -->
         <div class="card">
             <h2>Passkeys</h2>
             <p class="settings-info">Passkeys let you sign in with your fingerprint, face, or device PIN instead of a magic link email.</p>
@@ -65,6 +86,97 @@
     </main>
 
     <script>
+    // === API Keys ===
+
+    async function loadAPIKeys() {
+        const container = document.getElementById('apikey-list');
+        try {
+            const resp = await fetch('/api/keys');
+            if (!resp.ok) throw new Error('Failed to load keys');
+            const keys = await resp.json();
+
+            if (!keys || keys.length === 0) {
+                container.innerHTML = '<p class="empty">No API keys yet.</p>';
+                return;
+            }
+
+            let html = '<table class="passkey-table"><thead><tr><th>Name</th><th>Prefix</th><th>Created</th><th>Last Used</th><th></th></tr></thead><tbody>';
+            for (const k of keys) {
+                const created = new Date(k.created_at).toLocaleDateString();
+                const lastUsed = k.last_used_at ? new Date(k.last_used_at).toLocaleDateString() : '—';
+                html += '<tr>';
+                html += '<td>' + escapeHtml(k.name) + '</td>';
+                html += '<td><code>' + escapeHtml(k.key_prefix) + '…</code></td>';
+                html += '<td>' + created + '</td>';
+                html += '<td>' + lastUsed + '</td>';
+                html += '<td><button class="btn btn-danger btn-sm" onclick="deleteAPIKey(' + k.id + ')">Revoke</button></td>';
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = '<p class="passkey-error">Failed to load API keys.</p>';
+        }
+    }
+
+    async function createAPIKey() {
+        const nameInput = document.getElementById('apikey-name');
+        const statusEl = document.getElementById('apikey-status');
+        const revealEl = document.getElementById('apikey-reveal');
+        const valueEl = document.getElementById('apikey-value');
+        const name = nameInput.value.trim() || 'API Key';
+
+        try {
+            const resp = await fetch('/api/keys', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: name})
+            });
+            if (!resp.ok) throw new Error('Failed to create key');
+            const data = await resp.json();
+
+            valueEl.textContent = data.key;
+            revealEl.style.display = 'block';
+            statusEl.textContent = '';
+            nameInput.value = '';
+            loadAPIKeys();
+        } catch (err) {
+            statusEl.textContent = '✗ ' + err.message;
+            statusEl.className = 'passkey-status passkey-error';
+        }
+    }
+
+    async function deleteAPIKey(id) {
+        if (!confirm('Revoke this API key? Any tools using it will stop working.')) return;
+        try {
+            const resp = await fetch('/api/keys/' + id, {method: 'DELETE'});
+            if (!resp.ok) throw new Error('Failed to revoke key');
+            loadAPIKeys();
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
+    }
+
+    function copyAPIKey() {
+        const value = document.getElementById('apikey-value').textContent;
+        navigator.clipboard.writeText(value).then(() => {
+            const btn = event.target;
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy', 2000);
+        });
+    }
+
+    function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    // Load API keys on page load
+    loadAPIKeys();
+
+    // === Passkeys ===
+
     async function registerPasskey() {
         const statusEl = document.getElementById('passkey-status');
         const nameInput = document.getElementById('passkey-name');
@@ -72,26 +184,21 @@
         statusEl.textContent = 'Starting registration...';
 
         try {
-            // 1. Get registration options from server
             const beginResp = await fetch('/passkey/register/begin');
             if (!beginResp.ok) throw new Error('Failed to start registration');
             const options = await beginResp.json();
 
-            // 2. Decode base64url fields for WebAuthn API
             options.publicKey.challenge = base64urlToBuffer(options.publicKey.challenge);
             options.publicKey.user.id = base64urlToBuffer(options.publicKey.user.id);
             if (options.publicKey.excludeCredentials) {
                 options.publicKey.excludeCredentials = options.publicKey.excludeCredentials.map(c => ({
-                    ...c,
-                    id: base64urlToBuffer(c.id)
+                    ...c, id: base64urlToBuffer(c.id)
                 }));
             }
 
-            // 3. Create credential via browser WebAuthn API
             statusEl.textContent = 'Waiting for authenticator...';
             const credential = await navigator.credentials.create(options);
 
-            // 4. Encode response for server
             const attestationResponse = {
                 id: credential.id,
                 rawId: bufferToBase64url(credential.rawId),
@@ -101,19 +208,15 @@
                     clientDataJSON: bufferToBase64url(credential.response.clientDataJSON)
                 }
             };
-
-            // Include transports if available
             if (credential.response.getTransports) {
                 attestationResponse.response.transports = credential.response.getTransports();
             }
 
-            // 5. Send to server
             const finishResp = await fetch('/passkey/register/finish?name=' + encodeURIComponent(name), {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(attestationResponse)
             });
-
             if (!finishResp.ok) throw new Error('Registration failed');
 
             statusEl.textContent = '✓ Passkey registered!';

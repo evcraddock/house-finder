@@ -27,6 +27,7 @@ type Server struct {
 	commentRepo *comment.Repository
 	sessions    *auth.SessionStore
 	passkeys    *auth.PasskeyStore
+	apiKeys     *auth.APIKeyStore
 	templates   *template.Template
 	handler     http.Handler
 }
@@ -52,6 +53,7 @@ func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 	tokens := auth.NewTokenStore(db)
 	sessions := auth.NewSessionStore(db, !authCfg.DevMode)
 	passkeys := auth.NewPasskeyStore(db)
+	apiKeys := auth.NewAPIKeyStore(db)
 	mailer := auth.NewMailer(authCfg)
 
 	s := &Server{
@@ -59,6 +61,7 @@ func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 		commentRepo: comment.NewRepository(db),
 		sessions:    sessions,
 		passkeys:    passkeys,
+		apiKeys:     apiKeys,
 		templates:   tmpl,
 	}
 
@@ -98,6 +101,11 @@ func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 		mux.HandleFunc("/passkey/register/finish", ph.handleFinishRegistration)
 	}
 
+	// API key management routes (session-protected via RequireAPIKey middleware)
+	akh := &apikeyHandlers{apiKeys: apiKeys}
+	mux.HandleFunc("/api/keys", akh.handleAPIKeysRoute)
+	mux.HandleFunc("/api/keys/", akh.handleAPIKeysRoute)
+
 	// Protected routes
 	mux.HandleFunc("/", s.handleList)
 	mux.HandleFunc("/property/", s.handlePropertyRoute)
@@ -106,7 +114,9 @@ func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 
 	// Wrap everything with auth middleware if admin email is configured
 	if authCfg.AdminEmail != "" {
-		s.handler = auth.RequireAuth(sessions, mux)
+		// Web routes: session auth. API routes: bearer token or session for management.
+		webAuth := auth.RequireAuth(sessions, mux)
+		s.handler = auth.RequireAPIKey(apiKeys, sessions, webAuth)
 	} else {
 		s.handler = mux
 	}

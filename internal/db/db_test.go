@@ -123,6 +123,11 @@ func TestMigrations(t *testing.T) {
 			table: "passkey_credentials",
 			cols:  []string{"id", "email", "name", "credential_json", "created_at"},
 		},
+		{
+			name:  "api_keys table exists",
+			table: "api_keys",
+			cols:  []string{"id", "name", "key_prefix", "key_hash", "created_at", "last_used_at"},
+		},
 	}
 
 	d := openTestDB(t)
