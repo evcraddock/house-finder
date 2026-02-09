@@ -1,2 +1,2 @@
-app: make build && ./hf serve --port 8080
+app: air
 

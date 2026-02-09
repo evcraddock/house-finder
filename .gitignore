@@ -5,6 +5,7 @@
 
 # Build
 /dist/
+/tmp/
 
 # Dependencies
 /vendor/
