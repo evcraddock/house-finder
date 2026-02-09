@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/evcraddock/house-finder/internal/auth"
 	"github.com/evcraddock/house-finder/internal/comment"
 	"github.com/evcraddock/house-finder/internal/property"
 )
@@ -24,12 +25,13 @@ var staticFS embed.FS
 type Server struct {
 	propRepo    *property.Repository
 	commentRepo *comment.Repository
+	sessions    *auth.SessionStore
 	templates   *template.Template
-	mux         *http.ServeMux
+	handler     http.Handler
 }
 
-// NewServer creates a web server with the given database.
-func NewServer(db *sql.DB) (*Server, error) {
+// NewServer creates a web server with the given database and auth config.
+func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 	funcMap := template.FuncMap{
 		"formatPrice":  tmplFormatPrice,
 		"formatFloat":  tmplFormatFloat,
@@ -46,28 +48,57 @@ func NewServer(db *sql.DB) (*Server, error) {
 		return nil, fmt.Errorf("parsing templates: %w", err)
 	}
 
+	tokens := auth.NewTokenStore(db)
+	sessions := auth.NewSessionStore(db, !authCfg.DevMode)
+	mailer := auth.NewMailer(authCfg)
+
 	s := &Server{
 		propRepo:    property.NewRepository(db),
 		commentRepo: comment.NewRepository(db),
+		sessions:    sessions,
 		templates:   tmpl,
-		mux:         http.NewServeMux(),
 	}
+
+	mux := http.NewServeMux()
 
 	staticContent, err := fs.Sub(staticFS, "static")
 	if err != nil {
 		return nil, fmt.Errorf("creating static sub-fs: %w", err)
 	}
 
-	s.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticContent))))
-	s.mux.HandleFunc("/", s.handleList)
-	s.mux.HandleFunc("/property/", s.handlePropertyRoute)
+	// Auth handlers
+	ah := &authHandlers{
+		config:   authCfg,
+		tokens:   tokens,
+		sessions: sessions,
+		mailer:   mailer,
+		render:   s.render,
+	}
+
+	// Public routes
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticContent))))
+	mux.HandleFunc("/login", ah.handleLoginPage)
+	mux.HandleFunc("/auth/login", ah.handleLoginSubmit)
+	mux.HandleFunc("/auth/verify", ah.handleVerify)
+	mux.HandleFunc("/auth/logout", ah.handleLogout)
+
+	// Protected routes
+	mux.HandleFunc("/", s.handleList)
+	mux.HandleFunc("/property/", s.handlePropertyRoute)
+
+	// Wrap everything with auth middleware if admin email is configured
+	if authCfg.AdminEmail != "" {
+		s.handler = auth.RequireAuth(sessions, mux)
+	} else {
+		s.handler = mux
+	}
 
 	return s, nil
 }
 
 // ServeHTTP implements http.Handler.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.mux.ServeHTTP(w, r)
+	s.handler.ServeHTTP(w, r)
 }
 
 // ListenAndServe starts the HTTP server.

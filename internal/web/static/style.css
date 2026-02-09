@@ -196,3 +196,27 @@ td.rating { font-size: 1.1rem; }
     line-height: 1;
 }
 [data-theme="dark"] .theme-toggle { border-color: #4b5563; }
+
+/* Login page */
+.login-card { max-width: 400px; margin: 4rem auto; }
+.login-info { color: #6b7280; margin-bottom: 1rem; font-size: 0.95rem; }
+.login-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+.login-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+}
+.login-btn { width: 100%; text-align: center; }
+.flash-error { background: #fef2f2; color: #991b1b; }
+[data-theme="dark"] .login-input { background: #1f2937; border-color: #4b5563; color: #e5e7eb; }
+[data-theme="dark"] .login-input:focus { border-color: #60a5fa; box-shadow: 0 0 0 2px rgba(96,165,250,0.2); }
+[data-theme="dark"] .login-info { color: #9ca3af; }
+[data-theme="dark"] .flash-error { background: #451a1a; color: #fca5a5; }

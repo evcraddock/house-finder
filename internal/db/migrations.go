@@ -32,6 +32,20 @@ var migrations = []string{
 		text        TEXT    NOT NULL,
 		created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
 	)`,
+	`CREATE TABLE IF NOT EXISTS auth_tokens (
+		id         INTEGER PRIMARY KEY AUTOINCREMENT,
+		token      TEXT     NOT NULL UNIQUE,
+		email      TEXT     NOT NULL,
+		expires_at DATETIME NOT NULL,
+		used       INTEGER  DEFAULT 0,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE TABLE IF NOT EXISTS sessions (
+		id         TEXT     PRIMARY KEY,
+		email      TEXT     NOT NULL,
+		expires_at DATETIME NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`,
 }
 
 // migrate runs all migrations in order.

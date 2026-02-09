@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evcraddock/house-finder/internal/auth"
 	"github.com/evcraddock/house-finder/internal/db"
 )
 
@@ -237,7 +238,9 @@ func testServerWithDB(t *testing.T) (*Server, *sql.DB) {
 		}
 	})
 
-	srv, err := NewServer(d)
+	// No admin email = auth disabled for tests
+	cfg := auth.Config{}
+	srv, err := NewServer(d, cfg)
 	if err != nil {
 		t.Fatalf("new server: %v", err)
 	}

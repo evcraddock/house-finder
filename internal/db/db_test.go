@@ -108,6 +108,16 @@ func TestMigrations(t *testing.T) {
 			table: "comments",
 			cols:  []string{"id", "property_id", "text", "created_at"},
 		},
+		{
+			name:  "auth_tokens table exists",
+			table: "auth_tokens",
+			cols:  []string{"id", "token", "email", "expires_at", "used", "created_at"},
+		},
+		{
+			name:  "sessions table exists",
+			table: "sessions",
+			cols:  []string{"id", "email", "expires_at", "created_at"},
+		},
 	}
 
 	d := openTestDB(t)
