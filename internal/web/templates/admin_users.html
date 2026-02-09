@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Users — House Finder</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<script>
+    (function(){var t=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<body>
+    <header>
+        <h1><a href="/">House Finder</a></h1>
+        <nav class="header-nav">
+            <a href="/admin/users" class="nav-link active">Users</a>
+            <a href="/settings" class="nav-link">Settings</a>
+            <a href="/auth/logout" class="nav-link">Logout</a>
+        </nav>
+        <button class="theme-toggle" onclick="var d=document.documentElement;var t=d.getAttribute('data-theme')==='dark'?'light':'dark';d.setAttribute('data-theme',t);localStorage.setItem('theme',t);this.textContent=t==='dark'?'☀️':'🌙';" id="theme-btn">
+            <script>document.write(localStorage.getItem('theme')==='dark'?'☀️':'🌙')</script>
+        </button>
+    </header>
+    <main>
+        <a href="/" class="back-link">← Properties</a>
+
+        <div class="card">
+            <h2>Authorized Users</h2>
+            <p class="settings-info">Users who can log in and use House Finder.</p>
+
+            <div id="users-list"></div>
+
+            <h3>Add User</h3>
+            <div class="user-form">
+                <div class="form-row">
+                    <input type="email" id="user-email" placeholder="Email (required)" class="login-input">
+                    <input type="text" id="user-name" placeholder="Name" class="login-input">
+                </div>
+                <div class="form-row">
+                    <input type="tel" id="user-phone" placeholder="Phone" class="login-input">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="user-realtor"> Realtor
+                    </label>
+                </div>
+                <button class="btn" onclick="addUser()">Add User</button>
+            </div>
+            <div id="user-status" class="passkey-status"></div>
+        </div>
+
+        <!-- Edit modal -->
+        <div id="edit-modal" class="modal" style="display:none;">
+            <div class="modal-content card">
+                <h3>Edit User</h3>
+                <input type="hidden" id="edit-id">
+                <div class="form-row">
+                    <label>Email</label>
+                    <span id="edit-email" class="form-value"></span>
+                </div>
+                <div class="form-row">
+                    <input type="text" id="edit-name" placeholder="Name" class="login-input">
+                    <input type="tel" id="edit-phone" placeholder="Phone" class="login-input">
+                </div>
+                <div class="form-row">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="edit-realtor"> Realtor
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn" onclick="saveUser()">Save</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                </div>
+                <div id="edit-status" class="passkey-status"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    async function loadUsers() {
+        const container = document.getElementById('users-list');
+        try {
+            const resp = await fetch('/api/users');
+            if (!resp.ok) throw new Error('Failed to load users');
+            const users = await resp.json();
+
+            if (!users || users.length === 0) {
+                container.innerHTML = '<p class="empty">No authorized users yet. Only the admin can log in.</p>';
+                return;
+            }
+
+            let html = '<table class="passkey-table">';
+            html += '<thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Realtor</th><th></th></tr></thead><tbody>';
+            for (const u of users) {
+                html += '<tr>';
+                html += '<td>' + escapeHtml(u.name || '—') + '</td>';
+                html += '<td>' + escapeHtml(u.email) + '</td>';
+                html += '<td>' + escapeHtml(u.phone || '—') + '</td>';
+                html += '<td>' + (u.is_realtor ? '✓' : '') + '</td>';
+                html += '<td class="action-buttons">';
+                html += '<button class="btn btn-sm" onclick=\'editUser(' + JSON.stringify(u) + ')\'>Edit</button> ';
+                html += '<button class="btn btn-danger btn-sm" onclick="removeUser(' + u.id + ', \'' + escapeHtml(u.email) + '\')">Remove</button>';
+                html += '</td>';
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = '<p class="passkey-error">Failed to load users.</p>';
+        }
+    }
+
+    async function addUser() {
+        const emailInput = document.getElementById('user-email');
+        const nameInput = document.getElementById('user-name');
+        const phoneInput = document.getElementById('user-phone');
+        const realtorInput = document.getElementById('user-realtor');
+        const statusEl = document.getElementById('user-status');
+        const email = emailInput.value.trim();
+
+        if (!email) {
+            statusEl.textContent = '✗ Email is required';
+            statusEl.className = 'passkey-status passkey-error';
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/users', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    email: email,
+                    name: nameInput.value.trim(),
+                    phone: phoneInput.value.trim(),
+                    is_realtor: realtorInput.checked
+                })
+            });
+            if (!resp.ok) {
+                const data = await resp.json();
+                throw new Error(data.error || 'Failed to add user');
+            }
+
+            statusEl.textContent = '✓ User added';
+            statusEl.className = 'passkey-status passkey-success';
+            emailInput.value = '';
+            nameInput.value = '';
+            phoneInput.value = '';
+            realtorInput.checked = false;
+            loadUsers();
+            setTimeout(() => { statusEl.textContent = ''; }, 2000);
+        } catch (err) {
+            statusEl.textContent = '✗ ' + err.message;
+            statusEl.className = 'passkey-status passkey-error';
+        }
+    }
+
+    function editUser(user) {
+        document.getElementById('edit-id').value = user.id;
+        document.getElementById('edit-email').textContent = user.email;
+        document.getElementById('edit-name').value = user.name || '';
+        document.getElementById('edit-phone').value = user.phone || '';
+        document.getElementById('edit-realtor').checked = user.is_realtor || false;
+        document.getElementById('edit-status').textContent = '';
+        document.getElementById('edit-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('edit-modal').style.display = 'none';
+    }
+
+    async function saveUser() {
+        const id = document.getElementById('edit-id').value;
+        const statusEl = document.getElementById('edit-status');
+
+        try {
+            const resp = await fetch('/api/users/' + id, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    name: document.getElementById('edit-name').value.trim(),
+                    phone: document.getElementById('edit-phone').value.trim(),
+                    is_realtor: document.getElementById('edit-realtor').checked
+                })
+            });
+            if (!resp.ok) {
+                const data = await resp.json();
+                throw new Error(data.error || 'Failed to update user');
+            }
+
+            closeModal();
+            loadUsers();
+        } catch (err) {
+            statusEl.textContent = '✗ ' + err.message;
+            statusEl.className = 'passkey-status passkey-error';
+        }
+    }
+
+    async function removeUser(id, email) {
+        if (!confirm('Remove ' + email + '? They will no longer be able to log in.')) return;
+        try {
+            const resp = await fetch('/api/users/' + id, {method: 'DELETE'});
+            if (!resp.ok) throw new Error('Failed to remove user');
+            loadUsers();
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
+    }
+
+    // Close modal on Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeModal();
+    });
+
+    // Close modal on backdrop click
+    document.getElementById('edit-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    loadUsers();
+    </script>
+</body>
+</html>

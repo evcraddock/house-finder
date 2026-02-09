@@ -148,6 +148,7 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 	mux.HandleFunc("/property/", s.handlePropertyRoute)
 	mux.HandleFunc("/settings", s.handleSettings)
 	mux.HandleFunc("/settings/passkey/delete", s.handlePasskeyDelete)
+	mux.HandleFunc("/admin/users", s.handleAdminUsers)
 
 	// Wrap everything with auth middleware if admin email is configured
 	if authCfg.AdminEmail != "" {

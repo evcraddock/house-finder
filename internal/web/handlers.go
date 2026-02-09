@@ -11,11 +11,13 @@ import (
 
 type listData struct {
 	Properties []*property.Property
+	IsAdmin    bool
 }
 
 type detailData struct {
 	Property *property.Property
 	Comments interface{}
+	IsAdmin  bool
 }
 
 // handleList renders the property list page.
@@ -31,7 +33,9 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.render(w, "list.html", listData{Properties: props})
+	email, sessionErr := s.sessions.Validate(r)
+	isAdmin := sessionErr == nil && s.users.IsAdmin(email)
+	s.render(w, "list.html", listData{Properties: props, IsAdmin: isAdmin})
 }
 
 // handleDetail renders the property detail page.
@@ -54,7 +58,9 @@ func (s *Server) handleDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.render(w, "detail.html", detailData{Property: prop, Comments: comments})
+	detailEmail, detailSessionErr := s.sessions.Validate(r)
+	detailIsAdmin := detailSessionErr == nil && s.users.IsAdmin(detailEmail)
+	s.render(w, "detail.html", detailData{Property: prop, Comments: comments, IsAdmin: detailIsAdmin})
 }
 
 // handleCommentPost adds a comment via HTMX or form POST.
@@ -150,6 +156,22 @@ func (s *Server) handleRatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/property/%d", id), http.StatusSeeOther)
+}
+
+// handleAdminUsers renders the admin user management page.
+func (s *Server) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
+	email, err := s.sessions.Validate(r)
+	if err != nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	if !s.users.IsAdmin(email) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	s.render(w, "admin_users.html", nil)
 }
 
 // handleSettings renders the settings page with passkey management.
