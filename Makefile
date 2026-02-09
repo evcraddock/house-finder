@@ -42,9 +42,14 @@ dev-logs: ## Stream all logs (Ctrl+C to stop)
 
 dev-tail: ## Show last 100 lines of logs (non-blocking)
 	@if [ -S $(SOCKET) ]; then \
-		for pane in $$(tmux -S $(SOCKET) list-panes -a -F '#{pane_id}' 2>/dev/null); do \
-			tmux -S $(SOCKET) capture-pane -p -t "$$pane" -S -100 2>/dev/null; \
-		done; \
+		TMUX_SOCK=$$(ls -t /tmp/tmux-$$(id -u)/overmind-house-finder-* 2>/dev/null | head -1); \
+		if [ -n "$$TMUX_SOCK" ]; then \
+			for pane in $$(tmux -S "$$TMUX_SOCK" list-panes -a -F '#{pane_id}' 2>/dev/null); do \
+				tmux -S "$$TMUX_SOCK" capture-pane -p -t "$$pane" -S -100 2>/dev/null; \
+			done; \
+		else \
+			echo "Tmux socket not found"; \
+		fi; \
 	else \
 		echo "Dev environment not running"; \
 	fi
