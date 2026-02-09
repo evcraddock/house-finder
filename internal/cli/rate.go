@@ -32,13 +32,9 @@ func runRate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("rating must be 1-4, got %d", rating)
 	}
 
-	repo, database, err := newPropertyRepo()
-	if err != nil {
-		return err
-	}
-	defer closeDB(database)
+	c := newAPIClient()
 
-	if err := repo.UpdateRating(id, rating); err != nil {
+	if err := c.RateProperty(id, rating); err != nil {
 		return err
 	}
 

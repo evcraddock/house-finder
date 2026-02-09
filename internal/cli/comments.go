@@ -23,13 +23,9 @@ func runComments(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid property ID: %s", args[0])
 	}
 
-	repo, database, err := newCommentRepo()
-	if err != nil {
-		return err
-	}
-	defer closeDB(database)
+	c := newAPIClient()
 
-	comments, err := repo.ListByPropertyID(id)
+	comments, err := c.ListComments(id)
 	if err != nil {
 		return err
 	}
