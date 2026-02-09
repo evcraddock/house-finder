@@ -81,6 +81,43 @@ func (r *Repository) ListByPropertyID(propertyID int64) ([]*Visit, error) {
 	return visits, nil
 }
 
+// LastVisitByProperty returns the most recent visit for each property that has one.
+// Returns a map of property_id -> Visit.
+func (r *Repository) LastVisitByProperty() (map[int64]*Visit, error) {
+	rows, err := r.db.Query(
+		`SELECT v.id, v.property_id, v.visit_date, v.visit_type, v.notes, v.created_at
+		 FROM visits v
+		 INNER JOIN (
+		     SELECT property_id, MAX(visit_date) AS max_date
+		     FROM visits GROUP BY property_id
+		 ) latest ON v.property_id = latest.property_id AND v.visit_date = latest.max_date
+		 ORDER BY v.property_id`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("querying last visits: %w", err)
+	}
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = fmt.Errorf("closing rows: %w", closeErr)
+		}
+	}()
+
+	result := make(map[int64]*Visit)
+	for rows.Next() {
+		var v Visit
+		if err := rows.Scan(&v.ID, &v.PropertyID, &v.VisitDate, &v.VisitType, &v.Notes, &v.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scanning visit: %w", err)
+		}
+		result[v.PropertyID] = &v
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating visits: %w", err)
+	}
+
+	return result, nil
+}
+
 // Delete removes a visit by ID.
 func (r *Repository) Delete(id int64) error {
 	result, err := r.db.Exec("DELETE FROM visits WHERE id = ?", id)

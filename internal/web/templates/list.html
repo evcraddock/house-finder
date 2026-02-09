@@ -27,23 +27,25 @@
         <table>
             <thead>
                 <tr>
+                    <th>Rating</th>
                     <th>Address</th>
                     <th>Price</th>
                     <th>Beds</th>
                     <th>Baths</th>
                     <th>Sqft</th>
-                    <th>Rating</th>
+                    <th>Visit</th>
                 </tr>
             </thead>
             <tbody>
                 {{range .Properties}}
                 <tr>
+                    <td class="rating">{{formatRating .Rating}}</td>
                     <td><a href="/property/{{.ID}}">{{.Address}}</a></td>
                     <td class="price">{{formatPrice .Price}}</td>
                     <td>{{formatFloat .Bedrooms}}</td>
                     <td>{{formatFloat .Bathrooms}}</td>
                     <td>{{formatInt .Sqft}}</td>
-                    <td class="rating">{{formatRating .Rating}}</td>
+                    <td>{{index $.LastVisits .ID}}</td>
                 </tr>
                 {{end}}
             </tbody>
