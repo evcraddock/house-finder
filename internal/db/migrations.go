@@ -61,6 +61,12 @@ var migrations = []string{
 		created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
 		last_used_at DATETIME
 	)`,
+	`CREATE TABLE IF NOT EXISTS authorized_users (
+		id         INTEGER PRIMARY KEY AUTOINCREMENT,
+		email      TEXT    NOT NULL UNIQUE,
+		name       TEXT    NOT NULL DEFAULT '',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`,
 }
 
 // migrate runs all migrations in order.

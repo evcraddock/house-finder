@@ -30,6 +30,7 @@ type Server struct {
 	sessions    *auth.SessionStore
 	passkeys    *auth.PasskeyStore
 	apiKeys     *auth.APIKeyStore
+	users       *auth.UserStore
 	templates   *template.Template
 	handler     http.Handler
 }
@@ -57,6 +58,7 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 	sessions := auth.NewSessionStore(db, !authCfg.DevMode)
 	passkeys := auth.NewPasskeyStore(db)
 	apiKeys := auth.NewAPIKeyStore(db)
+	users := auth.NewUserStore(db, authCfg.AdminEmail)
 	mailer := auth.NewMailer(authCfg)
 
 	propRepo := property.NewRepository(db)
@@ -67,6 +69,7 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 		sessions:    sessions,
 		passkeys:    passkeys,
 		apiKeys:     apiKeys,
+		users:       users,
 		templates:   tmpl,
 	}
 
@@ -87,6 +90,7 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 		tokens:   tokens,
 		sessions: sessions,
 		passkeys: passkeys,
+		users:    users,
 		mailer:   mailer,
 		render:   s.render,
 	}
@@ -98,6 +102,7 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 		sessions: sessions,
 		passkeys: passkeys,
 		apiKeys:  apiKeys,
+		users:    users,
 		mailer:   mailer,
 		render:   s.render,
 	}
@@ -114,7 +119,7 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 
 	// Passkey routes (login endpoints are public, registration requires session)
 	if authCfg.AdminEmail != "" {
-		ph, phErr := newPasskeyHandlers(authCfg, passkeys, sessions)
+		ph, phErr := newPasskeyHandlers(authCfg, passkeys, sessions, users)
 		if phErr != nil {
 			return nil, fmt.Errorf("creating passkey handlers: %w", phErr)
 		}
@@ -128,6 +133,11 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 	akh := &apikeyHandlers{apiKeys: apiKeys}
 	mux.HandleFunc("/api/keys", akh.handleAPIKeysRoute)
 	mux.HandleFunc("/api/keys/", akh.handleAPIKeysRoute)
+
+	// User management routes (admin-only, session-protected)
+	uh := &userHandlers{users: users, sessions: sessions}
+	mux.HandleFunc("/api/users", uh.handleUsersRoute)
+	mux.HandleFunc("/api/users/", uh.handleUsersRoute)
 
 	// REST API endpoints (bearer token auth via RequireAPIKey middleware)
 	mux.HandleFunc("/api/properties", s.handleAPIProperties)

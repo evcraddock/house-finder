@@ -15,6 +15,7 @@ type cliAuthHandlers struct {
 	sessions *auth.SessionStore
 	passkeys *auth.PasskeyStore
 	apiKeys  *auth.APIKeyStore
+	users    *auth.UserStore
 	mailer   *auth.Mailer
 	render   func(w http.ResponseWriter, name string, data interface{})
 }
@@ -57,8 +58,8 @@ func (h *cliAuthHandlers) submitEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Only send token if email matches admin
-	if email == strings.ToLower(h.config.AdminEmail) {
+	// Only send token if email is authorized
+	if h.users.IsAuthorized(email) {
 		token, err := h.tokens.Create(email)
 		if err != nil {
 			log.Printf("Error creating token: %v", err)
@@ -120,12 +121,18 @@ func (h *cliAuthHandlers) handleCLIAuthComplete(w http.ResponseWriter, r *http.R
 }
 
 func (h *cliAuthHandlers) hasPasskeys() bool {
-	if h.passkeys == nil || h.config.AdminEmail == "" {
+	if h.passkeys == nil {
 		return false
 	}
-	creds, err := h.passkeys.WebAuthnCredentials(h.config.AdminEmail)
+	emails, err := h.users.AllEmails()
 	if err != nil {
 		return false
 	}
-	return len(creds) > 0
+	for _, email := range emails {
+		creds, cerr := h.passkeys.WebAuthnCredentials(email)
+		if cerr == nil && len(creds) > 0 {
+			return true
+		}
+	}
+	return false
 }
