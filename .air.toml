@@ -1,0 +1,18 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  bin = "./tmp/hf"
+  cmd = "go build -o ./tmp/hf ./cmd/hf"
+  args_bin = ["serve", "--port", "8080"]
+  delay = 1000
+  exclude_dir = ["tmp", "vendor", ".git"]
+  exclude_regex = ["_test\\.go$"]
+  include_ext = ["go", "html", "css"]
+  kill_delay = 500
+
+[log]
+  time = false
+
+[misc]
+  clean_on_exit = true
