@@ -54,5 +54,10 @@ func runServe(port int) error {
 		return err
 	}
 
+	if authCfg.DevMode {
+		log.Printf("[DEV] Admin: %s", authCfg.AdminEmail)
+		log.Printf("[DEV] Login: http://localhost:%d/login", port)
+	}
+
 	return srv.ListenAndServe(port)
 }

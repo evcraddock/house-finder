@@ -50,12 +50,14 @@ func (h *userHandlers) handleUsersRoute(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if r.Method == http.MethodDelete {
+	switch r.Method {
+	case http.MethodPut:
+		h.updateUser(w, r, id)
+	case http.MethodDelete:
 		h.deleteUser(w, id)
-		return
+	default:
+		apiError(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
-
-	apiError(w, "method not allowed", http.StatusMethodNotAllowed)
 }
 
 func (h *userHandlers) listUsers(w http.ResponseWriter) {
@@ -69,8 +71,10 @@ func (h *userHandlers) listUsers(w http.ResponseWriter) {
 
 func (h *userHandlers) addUser(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Email string `json:"email"`
-		Name  string `json:"name"`
+		Email     string `json:"email"`
+		Name      string `json:"name"`
+		Phone     string `json:"phone"`
+		IsRealtor bool   `json:"is_realtor"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		apiError(w, "invalid JSON body", http.StatusBadRequest)
@@ -82,7 +86,7 @@ func (h *userHandlers) addUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.users.Add(req.Email, req.Name)
+	user, err := h.users.Add(req.Email, req.Name, req.Phone, req.IsRealtor)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			apiError(w, err.Error(), http.StatusConflict)
@@ -93,6 +97,30 @@ func (h *userHandlers) addUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	apiJSON(w, user, http.StatusCreated)
+}
+
+func (h *userHandlers) updateUser(w http.ResponseWriter, r *http.Request, id int64) {
+	var req struct {
+		Name      string `json:"name"`
+		Phone     string `json:"phone"`
+		IsRealtor bool   `json:"is_realtor"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apiError(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.users.Update(id, req.Name, req.Phone, req.IsRealtor)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			apiError(w, "user not found", http.StatusNotFound)
+			return
+		}
+		apiError(w, "updating user: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	apiJSON(w, user, http.StatusOK)
 }
 
 func (h *userHandlers) deleteUser(w http.ResponseWriter, id int64) {

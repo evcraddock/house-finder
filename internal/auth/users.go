@@ -12,6 +12,8 @@ type User struct {
 	ID        int64     `json:"id"`
 	Email     string    `json:"email"`
 	Name      string    `json:"name"`
+	Phone     string    `json:"phone"`
+	IsRealtor bool      `json:"is_realtor"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -52,17 +54,18 @@ func (s *UserStore) IsAdmin(email string) bool {
 }
 
 // Add creates a new authorized user.
-func (s *UserStore) Add(email, name string) (*User, error) {
+func (s *UserStore) Add(email, name, phone string, isRealtor bool) (*User, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	name = strings.TrimSpace(name)
+	phone = strings.TrimSpace(phone)
 
 	if email == "" {
 		return nil, fmt.Errorf("email is required")
 	}
 
 	result, err := s.db.Exec(
-		"INSERT INTO authorized_users (email, name) VALUES (?, ?)",
-		email, name,
+		"INSERT INTO authorized_users (email, name, phone, is_realtor) VALUES (?, ?, ?, ?)",
+		email, name, phone, isRealtor,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
@@ -79,10 +82,34 @@ func (s *UserStore) Add(email, name string) (*User, error) {
 	return s.GetByID(id)
 }
 
+// Update modifies an existing user's profile fields.
+func (s *UserStore) Update(id int64, name, phone string, isRealtor bool) (*User, error) {
+	name = strings.TrimSpace(name)
+	phone = strings.TrimSpace(phone)
+
+	result, err := s.db.Exec(
+		"UPDATE authorized_users SET name = ?, phone = ?, is_realtor = ? WHERE id = ?",
+		name, phone, isRealtor, id,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("updating user: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("checking affected rows: %w", err)
+	}
+	if rows == 0 {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	return s.GetByID(id)
+}
+
 // List returns all authorized users.
 func (s *UserStore) List() ([]*User, error) {
 	rows, err := s.db.Query(
-		"SELECT id, email, name, created_at FROM authorized_users ORDER BY email",
+		"SELECT id, email, name, phone, is_realtor, created_at FROM authorized_users ORDER BY email",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing users: %w", err)
@@ -96,7 +123,7 @@ func (s *UserStore) List() ([]*User, error) {
 	var users []*User
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.Phone, &u.IsRealtor, &u.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scanning user: %w", err)
 		}
 		users = append(users, &u)
@@ -109,8 +136,8 @@ func (s *UserStore) List() ([]*User, error) {
 func (s *UserStore) GetByID(id int64) (*User, error) {
 	var u User
 	err := s.db.QueryRow(
-		"SELECT id, email, name, created_at FROM authorized_users WHERE id = ?", id,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt)
+		"SELECT id, email, name, phone, is_realtor, created_at FROM authorized_users WHERE id = ?", id,
+	).Scan(&u.ID, &u.Email, &u.Name, &u.Phone, &u.IsRealtor, &u.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("user not found")
 	}

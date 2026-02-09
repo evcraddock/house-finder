@@ -265,3 +265,22 @@ header { display: flex; justify-content: space-between; align-items: center; }
 .passkey-btn:hover { background: #047857; }
 [data-theme="dark"] .login-divider::before, [data-theme="dark"] .login-divider::after { background: #4b5563; }
 [data-theme="dark"] .login-divider { color: #6b7280; }
+
+/* Admin user management */
+.user-form { margin-top: 1rem; }
+.form-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; flex-wrap: wrap; }
+.form-row .login-input { flex: 1; min-width: 150px; }
+.form-value { color: #6b7280; }
+.checkbox-label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; white-space: nowrap; }
+.checkbox-label input[type="checkbox"] { width: 1.1rem; height: 1.1rem; cursor: pointer; }
+.action-buttons { white-space: nowrap; }
+.btn-secondary { background: #6b7280; }
+.btn-secondary:hover { background: #4b5563; }
+
+/* Modal */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal-content { width: 90%; max-width: 500px; margin: 0; }
+.modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+[data-theme="dark"] .form-value { color: #9ca3af; }
+[data-theme="dark"] .btn-secondary { background: #4b5563; }
+[data-theme="dark"] .btn-secondary:hover { background: #374151; }
