@@ -22,7 +22,9 @@ type passkeyHandlers struct {
 	config   auth.Config
 
 	// In-memory session data for in-flight WebAuthn ceremonies.
-	// Keyed by email for registration, by challenge for login.
+	// regSessions is keyed by email for registration.
+	// loginSessionData holds a single login ceremony — only one concurrent
+	// passkey login is supported (acceptable for single-admin app).
 	mu               sync.Mutex
 	regSessions      map[string]*webauthn.SessionData
 	loginSessionData *webauthn.SessionData
