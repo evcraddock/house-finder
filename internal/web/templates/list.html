@@ -23,6 +23,10 @@
         </button>
     </header>
     <main>
+        <div class="tabs">
+            <a href="/?tab=not-visited" class="tab{{if eq .Tab "not-visited"}} active{{end}}">Not Visited ({{.NotVisitedCnt}})</a>
+            <a href="/?tab=visited" class="tab{{if eq .Tab "visited"}} active{{end}}">Visited ({{.VisitedCnt}})</a>
+        </div>
         {{if .Properties}}
         <table>
             <thead>

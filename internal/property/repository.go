@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // Repository provides CRUD operations for properties.
@@ -61,16 +62,30 @@ func (r *Repository) GetByID(id int64) (*Property, error) {
 // ListOptions controls filtering for List.
 type ListOptions struct {
 	MinRating *int
+	Visited   *bool // nil = all, true = visited only, false = not visited only
 }
 
 // List returns all properties, optionally filtered.
 func (r *Repository) List(opts ListOptions) ([]*Property, error) {
 	query := fmt.Sprintf("SELECT %s FROM properties", selectColumns)
 	var args []interface{}
+	var conditions []string
 
 	if opts.MinRating != nil {
-		query += " WHERE rating >= ?"
+		conditions = append(conditions, "rating >= ?")
 		args = append(args, *opts.MinRating)
+	}
+
+	if opts.Visited != nil {
+		if *opts.Visited {
+			conditions = append(conditions, "id IN (SELECT DISTINCT property_id FROM visits)")
+		} else {
+			conditions = append(conditions, "id NOT IN (SELECT DISTINCT property_id FROM visits)")
+		}
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
 	query += " ORDER BY created_at DESC"

@@ -26,7 +26,7 @@ func TestListProperties(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, "testkey")
-	props, err := c.ListProperties(0)
+	props, err := c.ListProperties(ListOptions{})
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestListPropertiesWithMinRating(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, "testkey")
-	if _, err := c.ListProperties(3); err != nil {
+	if _, err := c.ListProperties(ListOptions{MinRating: 3}); err != nil {
 		t.Fatalf("list: %v", err)
 	}
 }
@@ -212,7 +212,7 @@ func TestServerError(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, "testkey")
-	_, err := c.ListProperties(0)
+	_, err := c.ListProperties(ListOptions{})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -228,7 +228,7 @@ func TestUnauthorized(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, "badkey")
-	_, err := c.ListProperties(0)
+	_, err := c.ListProperties(ListOptions{})
 	if err == nil {
 		t.Fatal("expected error")
 	}

@@ -130,6 +130,19 @@ func (s *Server) apiListProperties(w http.ResponseWriter, r *http.Request) {
 		}
 		opts.MinRating = &min
 	}
+	if visitedStr := r.URL.Query().Get("visited"); visitedStr != "" {
+		switch visitedStr {
+		case "true":
+			v := true
+			opts.Visited = &v
+		case "false":
+			v := false
+			opts.Visited = &v
+		default:
+			apiError(w, "visited must be true or false", http.StatusBadRequest)
+			return
+		}
+	}
 
 	props, err := s.propRepo.List(opts)
 	if err != nil {

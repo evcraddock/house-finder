@@ -266,6 +266,16 @@ header { display: flex; justify-content: space-between; align-items: center; }
 [data-theme="dark"] .login-divider::before, [data-theme="dark"] .login-divider::after { background: #4b5563; }
 [data-theme="dark"] .login-divider { color: #6b7280; }
 
+/* Tabs */
+.tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb; }
+.tab { padding: 0.6rem 1.2rem; text-decoration: none; color: #6b7280; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.tab:hover { color: #374151; }
+.tab.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+[data-theme="dark"] .tabs { border-bottom-color: #374151; }
+[data-theme="dark"] .tab { color: #9ca3af; }
+[data-theme="dark"] .tab:hover { color: #e5e7eb; }
+[data-theme="dark"] .tab.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+
 /* Admin user management */
 .user-form { margin-top: 1rem; }
 .form-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; flex-wrap: wrap; }
