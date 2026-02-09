@@ -15,7 +15,7 @@ func TestAuthorizedUserCanLogin(t *testing.T) {
 
 	// Add an authorized user
 	users := auth.NewUserStore(d, "admin@example.com")
-	if _, err := users.Add("bob@example.com", "Bob"); err != nil {
+	if _, err := users.Add("bob@example.com", "Bob", "", false); err != nil {
 		t.Fatalf("add user: %v", err)
 	}
 
@@ -61,7 +61,7 @@ func TestAuthorizedUserMagicLinkVerify(t *testing.T) {
 
 	// Add an authorized user
 	users := auth.NewUserStore(d, "admin@example.com")
-	if _, err := users.Add("bob@example.com", "Bob"); err != nil {
+	if _, err := users.Add("bob@example.com", "Bob", "", false); err != nil {
 		t.Fatalf("add user: %v", err)
 	}
 

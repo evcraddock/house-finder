@@ -44,7 +44,7 @@ func TestIsAuthorizedUnknown(t *testing.T) {
 func TestAddAndIsAuthorized(t *testing.T) {
 	s := testUserStore(t)
 
-	user, err := s.Add("bob@example.com", "Bob")
+	user, err := s.Add("bob@example.com", "Bob", "", false)
 	if err != nil {
 		t.Fatalf("add: %v", err)
 	}
@@ -66,11 +66,11 @@ func TestAddAndIsAuthorized(t *testing.T) {
 func TestAddDuplicate(t *testing.T) {
 	s := testUserStore(t)
 
-	if _, err := s.Add("bob@example.com", "Bob"); err != nil {
+	if _, err := s.Add("bob@example.com", "Bob", "", false); err != nil {
 		t.Fatalf("first add: %v", err)
 	}
 
-	_, err := s.Add("bob@example.com", "Bob Again")
+	_, err := s.Add("bob@example.com", "Bob Again", "", false)
 	if err == nil {
 		t.Fatal("expected error for duplicate")
 	}
@@ -79,7 +79,7 @@ func TestAddDuplicate(t *testing.T) {
 func TestAddEmptyEmail(t *testing.T) {
 	s := testUserStore(t)
 
-	_, err := s.Add("", "No Email")
+	_, err := s.Add("", "No Email", "", false)
 	if err == nil {
 		t.Fatal("expected error for empty email")
 	}
@@ -88,10 +88,10 @@ func TestAddEmptyEmail(t *testing.T) {
 func TestList(t *testing.T) {
 	s := testUserStore(t)
 
-	if _, err := s.Add("alice@example.com", "Alice"); err != nil {
+	if _, err := s.Add("alice@example.com", "Alice", "", false); err != nil {
 		t.Fatalf("add alice: %v", err)
 	}
-	if _, err := s.Add("bob@example.com", "Bob"); err != nil {
+	if _, err := s.Add("bob@example.com", "Bob", "", false); err != nil {
 		t.Fatalf("add bob: %v", err)
 	}
 
@@ -111,7 +111,7 @@ func TestList(t *testing.T) {
 func TestDeleteUser(t *testing.T) {
 	s := testUserStore(t)
 
-	user, err := s.Add("bob@example.com", "Bob")
+	user, err := s.Add("bob@example.com", "Bob", "", false)
 	if err != nil {
 		t.Fatalf("add: %v", err)
 	}
@@ -148,10 +148,61 @@ func TestIsAdmin(t *testing.T) {
 	}
 }
 
+func TestAddWithPhoneAndRealtor(t *testing.T) {
+	s := testUserStore(t)
+
+	user, err := s.Add("realtor@example.com", "Jane", "555-1234", true)
+	if err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	if user.Phone != "555-1234" {
+		t.Errorf("phone = %q, want %q", user.Phone, "555-1234")
+	}
+	if !user.IsRealtor {
+		t.Error("expected is_realtor = true")
+	}
+}
+
+func TestUpdateUser(t *testing.T) {
+	s := testUserStore(t)
+
+	user, err := s.Add("bob@example.com", "Bob", "", false)
+	if err != nil {
+		t.Fatalf("add: %v", err)
+	}
+
+	updated, err := s.Update(user.ID, "Robert", "555-9999", true)
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if updated.Name != "Robert" {
+		t.Errorf("name = %q, want %q", updated.Name, "Robert")
+	}
+	if updated.Phone != "555-9999" {
+		t.Errorf("phone = %q, want %q", updated.Phone, "555-9999")
+	}
+	if !updated.IsRealtor {
+		t.Error("expected is_realtor = true")
+	}
+	// Email shouldn't change
+	if updated.Email != "bob@example.com" {
+		t.Errorf("email = %q, want %q", updated.Email, "bob@example.com")
+	}
+}
+
+func TestUpdateNotFound(t *testing.T) {
+	s := testUserStore(t)
+
+	_, err := s.Update(999, "Nobody", "", false)
+	if err == nil {
+		t.Fatal("expected error for missing user")
+	}
+}
+
 func TestAllEmails(t *testing.T) {
 	s := testUserStore(t)
 
-	if _, err := s.Add("bob@example.com", "Bob"); err != nil {
+	if _, err := s.Add("bob@example.com", "Bob", "", false); err != nil {
 		t.Fatalf("add: %v", err)
 	}
 
