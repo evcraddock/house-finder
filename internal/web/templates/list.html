@@ -7,9 +7,15 @@
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/htmx.min.js"></script>
 </head>
+<script>
+    (function(){var t=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();
+</script>
 <body>
     <header>
         <h1><a href="/">House Finder</a></h1>
+        <button class="theme-toggle" onclick="var d=document.documentElement;var t=d.getAttribute('data-theme')==='dark'?'light':'dark';d.setAttribute('data-theme',t);localStorage.setItem('theme',t);this.textContent=t==='dark'?'☀️':'🌙';" id="theme-btn">
+            <script>document.write(localStorage.getItem('theme')==='dark'?'☀️':'🌙')</script>
+        </button>
     </header>
     <main>
         {{if .Properties}}
