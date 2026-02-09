@@ -1,2 +1,2 @@
-app: make build && ./hf serve
+app: make build && ./hf serve --port 8080
 

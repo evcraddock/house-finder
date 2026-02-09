@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Property.Address}} — House Finder</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/htmx.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1><a href="/">House Finder</a></h1>
+    </header>
+    <main>
+        <a href="/" class="back-link">← All Properties</a>
+
+        <div class="card">
+            <h2>{{.Property.Address}}</h2>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <label>Price</label>
+                    <span>{{formatPrice .Property.Price}}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Bedrooms</label>
+                    <span>{{formatFloat .Property.Bedrooms}}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Bathrooms</label>
+                    <span>{{formatFloat .Property.Bathrooms}}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Sqft</label>
+                    <span>{{formatInt .Property.Sqft}}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Lot Size</label>
+                    <span>{{formatLot .Property.LotSize}}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Year Built</label>
+                    <span>{{formatInt .Property.YearBuilt}}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Type</label>
+                    <span>{{formatStr .Property.PropertyType}}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Status</label>
+                    <span>{{formatStr .Property.Status}}</span>
+                </div>
+            </div>
+            {{if .Property.RealtorURL}}
+            <a href="{{.Property.RealtorURL}}" target="_blank" class="realtor-link">View on Realtor.com →</a>
+            {{end}}
+        </div>
+
+        {{template "rating-partial" .}}
+
+        <div class="card" id="comments-section">
+            <h2>Comments</h2>
+            {{template "comments-partial" .}}
+            <div class="comment-form">
+                <form hx-post="/property/{{.Property.ID}}/comment" hx-target="#comments-list" hx-swap="outerHTML"
+                      hx-on::after-request="this.reset()">
+                    <textarea name="text" placeholder="Add a comment..." required></textarea>
+                    <button type="submit" class="btn">Add Comment</button>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
+
+{{define "comments-partial"}}
+<div id="comments-list">
+    {{if .Comments}}
+    {{range .Comments}}
+    <div class="comment">
+        <div class="meta">{{.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}</div>
+        <div>{{.Text}}</div>
+    </div>
+    {{end}}
+    {{else}}
+    <div class="empty">No comments yet.</div>
+    {{end}}
+</div>
+{{end}}
+
+{{define "rating-partial"}}
+<div class="card" id="rating-card">
+    <h2>Rating</h2>
+    <div class="rating-form">
+        {{range $i := seq 1 4}}
+        <button class="rating-btn{{if eq (derefRating $.Property.Rating) $i}} active{{end}}"
+                hx-post="/property/{{$.Property.ID}}/rate"
+                hx-vals='{"rating": "{{$i}}"}'
+                hx-target="#rating-card"
+                hx-swap="outerHTML">
+            {{$i}}
+        </button>
+        {{end}}
+    </div>
+</div>
+{{end}}
