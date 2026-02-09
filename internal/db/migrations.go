@@ -53,6 +53,14 @@ var migrations = []string{
 		credential_json TEXT    NOT NULL,
 		created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 	)`,
+	`CREATE TABLE IF NOT EXISTS api_keys (
+		id           INTEGER  PRIMARY KEY AUTOINCREMENT,
+		name         TEXT     NOT NULL,
+		key_prefix   TEXT     NOT NULL,
+		key_hash     TEXT     NOT NULL UNIQUE,
+		created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+		last_used_at DATETIME
+	)`,
 }
 
 // migrate runs all migrations in order.

@@ -240,6 +240,15 @@ header { display: flex; justify-content: space-between; align-items: center; }
 [data-theme="dark"] .passkey-success { color: #4ade80; }
 [data-theme="dark"] .passkey-error { color: #f87171; }
 
+/* API key reveal */
+.apikey-reveal { margin-top: 1rem; padding: 1rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; }
+.apikey-warning { color: #b45309; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+.apikey-value { display: block; padding: 0.5rem; background: #f9fafb; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem; word-break: break-all; margin-bottom: 0.5rem; }
+.apikey-create { margin-top: 1rem; }
+[data-theme="dark"] .apikey-reveal { background: #064e3b; border-color: #065f46; }
+[data-theme="dark"] .apikey-warning { color: #fbbf24; }
+[data-theme="dark"] .apikey-value { background: #1f2937; border-color: #4b5563; color: #e5e7eb; }
+
 /* Login divider */
 .login-section { margin-bottom: 0.5rem; }
 .login-divider { display: flex; align-items: center; margin: 1rem 0; color: #9ca3af; font-size: 0.9rem; }
