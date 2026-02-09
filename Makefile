@@ -1,4 +1,4 @@
-.PHONY: build install dev dev-stop dev-status dev-logs dev-tail check pre-pr help
+.PHONY: build install dev dev-stop dev-status dev-logs dev-tail check pre-pr release help
 
 BINARY := hf
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -60,6 +60,13 @@ dev-connect: ## Connect to a dev process (usage: make dev-connect s=app)
 	else \
 		echo "Dev environment not running"; \
 	fi
+
+release: ## Build release binary for current platform
+	CGO_ENABLED=1 go build $(LDFLAGS) -o dist/$(BINARY)-$$(go env GOOS)-$$(go env GOARCH) ./cmd/hf
+	@echo "Built: dist/$(BINARY)-$$(go env GOOS)-$$(go env GOARCH)"
+
+docker: ## Build Docker image
+	docker build --build-arg VERSION=$(VERSION) -t house-finder:$(VERSION) .
 
 check: ## Run linting and tests
 	golangci-lint run && go test ./...

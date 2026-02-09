@@ -1,5 +1,7 @@
 # house-finder
 
+[![CI](https://github.com/evcraddock/house-finder/actions/workflows/ci.yml/badge.svg)](https://github.com/evcraddock/house-finder/actions/workflows/ci.yml)
+
 A tool to find and track houses for sale. Add properties by address, rate them, leave comments, and browse via CLI or web UI.
 
 ## Prerequisites
