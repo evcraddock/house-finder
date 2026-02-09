@@ -5,20 +5,20 @@ import "testing"
 func TestFormatPrice(t *testing.T) {
 	tests := []struct {
 		name     string
-		cents    int64
+		dollars  int64
 		expected string
 	}{
 		{"zero", 0, "0"},
-		{"small", 99900, "999"},
-		{"thousands", 25000000, "250,000"},
-		{"millions", 100000000, "1,000,000"},
+		{"small", 999, "999"},
+		{"thousands", 250000, "250,000"},
+		{"millions", 1000000, "1,000,000"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatPrice(tt.cents)
+			result := formatPrice(tt.dollars)
 			if result != tt.expected {
-				t.Errorf("formatPrice(%d) = %q, want %q", tt.cents, result, tt.expected)
+				t.Errorf("formatPrice(%d) = %q, want %q", tt.dollars, result, tt.expected)
 			}
 		})
 	}
