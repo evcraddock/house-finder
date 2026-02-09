@@ -36,6 +36,10 @@ func runShow(cmd *cobra.Command, args []string) error {
 
 	printPropertySummary(resp.Property)
 	fmt.Println()
+	if len(resp.Visits) > 0 {
+		fmt.Printf("Visits (%d):\n", len(resp.Visits))
+		printVisits(resp.Visits)
+	}
 	if len(resp.Comments) > 0 {
 		fmt.Printf("Comments (%d):\n", len(resp.Comments))
 		printCommentList(resp.Comments)

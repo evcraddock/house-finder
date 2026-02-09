@@ -68,6 +68,26 @@
 
         {{template "rating-partial" .}}
 
+        <div class="card" id="visits-section">
+            <h2>Visits</h2>
+            <div id="visits-list"></div>
+            <div class="visit-form">
+                <div class="form-row">
+                    <input type="date" id="visit-date" class="login-input">
+                    <select id="visit-type" class="login-input">
+                        <option value="showing">Showing</option>
+                        <option value="drive_by">Drive-by</option>
+                        <option value="open_house">Open House</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <input type="text" id="visit-notes" placeholder="Notes (optional)" class="login-input" style="flex:1;">
+                    <button class="btn" onclick="addVisit({{.Property.ID}})">Add Visit</button>
+                </div>
+            </div>
+            <div id="visit-status" class="passkey-status"></div>
+        </div>
+
         <div class="card" id="comments-section">
             <h2>Comments</h2>
             {{template "comments-partial" .}}
@@ -80,6 +100,70 @@
             </div>
         </div>
     </main>
+    <script>
+    function escapeHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    var visitTypeLabels = {showing: 'Showing', drive_by: 'Drive-by', open_house: 'Open House'};
+
+    async function loadVisits(propID) {
+        var container = document.getElementById('visits-list');
+        try {
+            var resp = await fetch('/api/properties/' + propID + '/visits');
+            if (!resp.ok) throw new Error('Failed to load visits');
+            var visits = await resp.json();
+            if (!visits || visits.length === 0) {
+                container.innerHTML = '<p class="empty">No visits yet.</p>';
+                return;
+            }
+            var html = '';
+            for (var v of visits) {
+                html += '<div class="comment"><div class="meta">' + escapeHtml(v.visit_date) + ' — ' + escapeHtml(visitTypeLabels[v.visit_type] || v.visit_type) + '</div>';
+                if (v.notes) html += '<div>' + escapeHtml(v.notes) + '</div>';
+                html += '</div>';
+            }
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = '<p class="passkey-error">Failed to load visits.</p>';
+        }
+    }
+
+    async function addVisit(propID) {
+        var dateInput = document.getElementById('visit-date');
+        var typeInput = document.getElementById('visit-type');
+        var notesInput = document.getElementById('visit-notes');
+        var statusEl = document.getElementById('visit-status');
+        if (!dateInput.value) {
+            statusEl.textContent = '✗ Date is required';
+            statusEl.className = 'passkey-status passkey-error';
+            return;
+        }
+        try {
+            var resp = await fetch('/api/properties/' + propID + '/visits', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({visit_date: dateInput.value, visit_type: typeInput.value, notes: notesInput.value.trim()})
+            });
+            if (!resp.ok) {
+                var data = await resp.json();
+                throw new Error(data.error || 'Failed to add visit');
+            }
+            statusEl.textContent = '✓ Visit recorded';
+            statusEl.className = 'passkey-status passkey-success';
+            notesInput.value = '';
+            loadVisits(propID);
+            setTimeout(function() { statusEl.textContent = ''; }, 2000);
+        } catch (err) {
+            statusEl.textContent = '✗ ' + err.message;
+            statusEl.className = 'passkey-status passkey-error';
+        }
+    }
+
+    loadVisits({{.Property.ID}});
+    </script>
 </body>
 </html>
 

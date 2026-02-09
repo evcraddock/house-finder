@@ -114,6 +114,11 @@ func RequireAPIKey(apiKeys *APIKeyStore, sessions *SessionStore, next http.Handl
 
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			// No bearer token — fall back to session auth (for web UI fetch calls)
+			if email, err := sessions.Validate(r); err == nil {
+				next.ServeHTTP(w, WithUserEmail(r, email))
+				return
+			}
 			http.Error(w, "Authorization required", http.StatusUnauthorized)
 			return
 		}

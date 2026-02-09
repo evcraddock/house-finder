@@ -11,6 +11,7 @@ import (
 
 	"github.com/evcraddock/house-finder/internal/comment"
 	"github.com/evcraddock/house-finder/internal/property"
+	"github.com/evcraddock/house-finder/internal/visit"
 )
 
 // Client is an HTTP client for the house-finder API.
@@ -33,6 +34,7 @@ func New(baseURL, apiKey string) *Client {
 type ShowResponse struct {
 	Property *property.Property `json:"property"`
 	Comments []*comment.Comment `json:"comments"`
+	Visits   []*visit.Visit     `json:"visits"`
 }
 
 // ListProperties returns all properties, optionally filtered by min rating.
@@ -96,6 +98,29 @@ func (c *Client) ListComments(id int64) ([]*comment.Comment, error) {
 		return nil, err
 	}
 	return comments, nil
+}
+
+// AddVisit records a visit to a property.
+func (c *Client) AddVisit(id int64, visitDate, visitType, notes string) (*visit.Visit, error) {
+	body := map[string]string{
+		"visit_date": visitDate,
+		"visit_type": visitType,
+		"notes":      notes,
+	}
+	var v visit.Visit
+	if err := c.post(fmt.Sprintf("/api/properties/%d/visits", id), body, &v); err != nil {
+		return nil, err
+	}
+	return &v, nil
+}
+
+// ListVisits returns visits for a property.
+func (c *Client) ListVisits(id int64) ([]*visit.Visit, error) {
+	var visits []*visit.Visit
+	if err := c.get(fmt.Sprintf("/api/properties/%d/visits", id), &visits); err != nil {
+		return nil, err
+	}
+	return visits, nil
 }
 
 // get performs a GET request and decodes the response.
