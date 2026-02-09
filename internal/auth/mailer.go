@@ -43,6 +43,32 @@ func (m *Mailer) SendMagicLink(email, token string) (string, error) {
 	return link, nil
 }
 
+// SendCLIMagicLink sends a magic link that redirects to /cli/auth/verify.
+func (m *Mailer) SendCLIMagicLink(email, token string) (string, error) {
+	link := fmt.Sprintf("%s/cli/auth/verify?token=%s", m.config.BaseURL, token)
+
+	if m.config.DevMode {
+		fmt.Printf("[DEV] CLI magic link for %s: %s\n", email, link)
+		return link, nil
+	}
+
+	subject := "House Finder — CLI Login Link"
+	body := fmt.Sprintf(
+		"Click the link below to log in to the House Finder CLI:\n\n%s\n\nThis link expires in 15 minutes and can only be used once.",
+		link,
+	)
+
+	msg := buildEmail(m.config.SMTPFrom, email, subject, body)
+	addr := fmt.Sprintf("%s:%s", m.config.SMTPHost, m.config.SMTPPort)
+	auth := smtp.PlainAuth("", m.config.SMTPUser, m.config.SMTPPass, m.config.SMTPHost)
+
+	if err := smtp.SendMail(addr, auth, m.config.SMTPFrom, []string{email}, msg); err != nil {
+		return "", fmt.Errorf("sending email: %w", err)
+	}
+
+	return link, nil
+}
+
 func buildEmail(from, to, subject, body string) []byte {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("From: %s\r\n", from))

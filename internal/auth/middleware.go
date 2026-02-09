@@ -132,6 +132,10 @@ func isPublicPath(path string) bool {
 	if path == "/passkey/login/begin" || path == "/passkey/login/finish" {
 		return true
 	}
+	// CLI auth pages are public (user authenticates through them)
+	if path == "/cli/auth" || path == "/cli/auth/verify" || path == "/cli/auth/complete" {
+		return true
+	}
 	return false
 }
 
