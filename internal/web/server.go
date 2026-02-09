@@ -82,12 +82,26 @@ func NewServer(db *sql.DB, authCfg auth.Config) (*Server, error) {
 		render:   s.render,
 	}
 
+	// CLI auth handlers
+	cah := &cliAuthHandlers{
+		config:   authCfg,
+		tokens:   tokens,
+		sessions: sessions,
+		passkeys: passkeys,
+		apiKeys:  apiKeys,
+		mailer:   mailer,
+		render:   s.render,
+	}
+
 	// Public routes
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticContent))))
 	mux.HandleFunc("/login", ah.handleLoginPage)
 	mux.HandleFunc("/auth/login", ah.handleLoginSubmit)
 	mux.HandleFunc("/auth/verify", ah.handleVerify)
 	mux.HandleFunc("/auth/logout", ah.handleLogout)
+	mux.HandleFunc("/cli/auth", cah.handleCLIAuth)
+	mux.HandleFunc("/cli/auth/verify", cah.handleCLIAuthVerify)
+	mux.HandleFunc("/cli/auth/complete", cah.handleCLIAuthComplete)
 
 	// Passkey routes (login endpoints are public, registration requires session)
 	if authCfg.AdminEmail != "" {

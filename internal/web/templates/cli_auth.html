@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLI Login — House Finder</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<script>
+    (function(){var t=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<body>
+    <header>
+        <h1><a href="/">House Finder</a></h1>
+        <button class="theme-toggle" onclick="var d=document.documentElement;var t=d.getAttribute('data-theme')==='dark'?'light':'dark';d.setAttribute('data-theme',t);localStorage.setItem('theme',t);this.textContent=t==='dark'?'☀️':'🌙';" id="theme-btn">
+            <script>document.write(localStorage.getItem('theme')==='dark'?'☀️':'🌙')</script>
+        </button>
+    </header>
+    <main>
+        <div class="card login-card" style="max-width:500px;">
+            <h2>CLI Login</h2>
+
+            {{if .APIKey}}
+            <!-- Key generated — show it -->
+            <div class="cli-auth-success">
+                <p class="cli-auth-instruction">✓ Authenticated! Copy this API key and paste it into your terminal:</p>
+                <code id="cli-key-value" class="apikey-value">{{.APIKey}}</code>
+                <button class="btn" onclick="copyKey()">Copy to Clipboard</button>
+                <p class="cli-auth-hint">You can close this page after pasting the key.</p>
+            </div>
+
+            {{else if .Message}}
+            <!-- Magic link sent -->
+            <div class="flash">{{.Message}}</div>
+            <p class="login-info">Check your email and click the login link. You'll be redirected back here.</p>
+
+            {{else if .Error}}
+            <div class="flash flash-error">{{.Error}}</div>
+            <p class="login-info">Enter your email to receive a login link.</p>
+            <form method="POST" action="/cli/auth">
+                <input type="email" name="email" placeholder="you@example.com" required class="login-input">
+                <button type="submit" class="btn login-btn">Send Login Link</button>
+            </form>
+
+            {{else}}
+            <!-- Initial state — show login form -->
+            {{if .HasPasskeys}}
+            <div class="login-section">
+                <button id="passkey-login-btn" class="btn login-btn passkey-btn" onclick="loginWithPasskey()">🔑 Sign in with Passkey</button>
+                <div id="passkey-status" class="passkey-status"></div>
+            </div>
+            <div class="login-divider"><span>or</span></div>
+            {{end}}
+
+            <p class="login-info">Sign in to generate an API key for the CLI.</p>
+            <form method="POST" action="/cli/auth">
+                <input type="email" name="email" placeholder="you@example.com" required class="login-input">
+                <button type="submit" class="btn login-btn">Send Login Link</button>
+            </form>
+            {{end}}
+        </div>
+    </main>
+
+    <script>
+    function copyKey() {
+        var value = document.getElementById('cli-key-value').textContent;
+        navigator.clipboard.writeText(value).then(function() {
+            var btn = event.target;
+            btn.textContent = 'Copied!';
+            setTimeout(function() { btn.textContent = 'Copy to Clipboard'; }, 2000);
+        });
+    }
+
+    {{if .HasPasskeys}}
+    async function loginWithPasskey() {
+        const statusEl = document.getElementById('passkey-status');
+        statusEl.textContent = 'Starting...';
+        try {
+            const beginResp = await fetch('/passkey/login/begin');
+            if (!beginResp.ok) throw new Error('Failed to start login');
+            const options = await beginResp.json();
+
+            options.publicKey.challenge = base64urlToBuffer(options.publicKey.challenge);
+            if (options.publicKey.allowCredentials) {
+                options.publicKey.allowCredentials = options.publicKey.allowCredentials.map(c => ({
+                    ...c, id: base64urlToBuffer(c.id)
+                }));
+            }
+
+            statusEl.textContent = 'Waiting for authenticator...';
+            const assertion = await navigator.credentials.get(options);
+
+            const body = {
+                id: assertion.id,
+                rawId: bufferToBase64url(assertion.rawId),
+                type: assertion.type,
+                response: {
+                    authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
+                    clientDataJSON: bufferToBase64url(assertion.response.clientDataJSON),
+                    signature: bufferToBase64url(assertion.response.signature),
+                    userHandle: assertion.response.userHandle ? bufferToBase64url(assertion.response.userHandle) : ''
+                }
+            };
+
+            const finishResp = await fetch('/passkey/login/finish', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            if (!finishResp.ok) throw new Error('Login failed');
+
+            // Redirect to cli/auth/complete to generate the key
+            window.location.href = '/cli/auth/complete';
+        } catch (err) {
+            if (err.name === 'NotAllowedError') {
+                statusEl.textContent = '';
+            } else {
+                statusEl.textContent = '✗ ' + err.message;
+                statusEl.className = 'passkey-status passkey-error';
+            }
+        }
+    }
+
+    function base64urlToBuffer(b) {
+        var s = b.replace(/-/g,'+').replace(/_/g,'/');
+        var p = s.length%4===0?'':'='.repeat(4-s.length%4);
+        var bin = atob(s+p);
+        var a = new Uint8Array(bin.length);
+        for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i);
+        return a.buffer;
+    }
+    function bufferToBase64url(buf) {
+        var a = new Uint8Array(buf);
+        var s = '';
+        for(var i=0;i<a.length;i++) s+=String.fromCharCode(a[i]);
+        return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+    }
+    {{end}}
+    </script>
+</body>
+</html>
