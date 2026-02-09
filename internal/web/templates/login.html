@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — House Finder</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<script>
+    (function(){var t=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<body>
+    <header>
+        <h1><a href="/">House Finder</a></h1>
+        <button class="theme-toggle" onclick="var d=document.documentElement;var t=d.getAttribute('data-theme')==='dark'?'light':'dark';d.setAttribute('data-theme',t);localStorage.setItem('theme',t);this.textContent=t==='dark'?'☀️':'🌙';" id="theme-btn">
+            <script>document.write(localStorage.getItem('theme')==='dark'?'☀️':'🌙')</script>
+        </button>
+    </header>
+    <main>
+        <div class="card login-card">
+            <h2>Sign In</h2>
+            {{if .Message}}
+            <div class="flash">{{.Message}}</div>
+            {{end}}
+            {{if .Error}}
+            <div class="flash flash-error">{{.Error}}</div>
+            {{end}}
+            <p class="login-info">Enter your email address and we'll send you a login link.</p>
+            <form method="POST" action="/auth/login">
+                <input type="email" name="email" placeholder="you@example.com" required class="login-input">
+                <button type="submit" class="btn login-btn">Send Login Link</button>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

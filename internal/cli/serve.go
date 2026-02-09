@@ -3,6 +3,7 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/evcraddock/house-finder/internal/auth"
 	"github.com/evcraddock/house-finder/internal/web"
 )
 
@@ -31,7 +32,9 @@ func runServe(port int) error {
 	}
 	defer closeDB(database)
 
-	srv, err := web.NewServer(database)
+	authCfg := auth.ConfigFromEnv()
+
+	srv, err := web.NewServer(database, authCfg)
 	if err != nil {
 		return err
 	}
