@@ -22,7 +22,7 @@ func (rw *responseWriter) WriteHeader(code int) {
 func RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Skip noisy paths
-		if strings.HasPrefix(r.URL.Path, "/static/") {
+		if strings.HasPrefix(r.URL.Path, "/static/") || r.URL.Path == "/health" {
 			next.ServeHTTP(w, r)
 			return
 		}

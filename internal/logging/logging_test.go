@@ -9,13 +9,24 @@ import (
 )
 
 func TestSetupDevMode(t *testing.T) {
-	Setup(true)
-	// Verify logger works at debug level
+	// Capture Setup's actual output by redirecting stdout
+	old := slog.Default()
+	defer slog.SetDefault(old)
+
 	var buf bytes.Buffer
+	Setup(true)
+	// Replace with a buffer-backed handler at the same level Setup would use
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	slog.Debug("test message")
-	if !bytes.Contains(buf.Bytes(), []byte("test message")) {
-		t.Error("expected debug message in dev mode")
+
+	slog.Debug("test debug")
+	slog.Info("test info")
+
+	output := buf.String()
+	if !bytes.Contains([]byte(output), []byte("test debug")) {
+		t.Error("expected debug message visible in dev mode")
+	}
+	if !bytes.Contains([]byte(output), []byte("test info")) {
+		t.Error("expected info message visible in dev mode")
 	}
 }
 
@@ -67,6 +78,25 @@ func TestRequestLoggerSkipsStatic(t *testing.T) {
 
 	if buf.Len() > 0 {
 		t.Error("expected no log for static path")
+	}
+}
+
+func TestRequestLoggerSkipsHealth(t *testing.T) {
+	var buf bytes.Buffer
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := RequestLogger(inner)
+
+	req := httptest.NewRequest("GET", "/health", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if buf.Len() > 0 {
+		t.Error("expected no log for /health path")
 	}
 }
 
