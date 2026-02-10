@@ -53,7 +53,7 @@ func (s *Server) handleAPIEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Gather properties
+	// Gather properties — default to not-visited only
 	var props []*property.Property
 	if len(req.PropertyIDs) > 0 {
 		for _, id := range req.PropertyIDs {
@@ -68,6 +68,11 @@ func (s *Server) handleAPIEmail(w http.ResponseWriter, r *http.Request) {
 		opts := property.ListOptions{
 			MinRating: req.MinRating,
 			Visited:   req.Visited,
+		}
+		// Default to not-visited if no visit filter specified
+		if opts.Visited == nil {
+			notVisited := false
+			opts.Visited = &notVisited
 		}
 		listed, listErr := s.propRepo.List(opts)
 		if listErr != nil {
