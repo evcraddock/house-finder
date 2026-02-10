@@ -25,6 +25,12 @@
     <main>
         <a href="/" class="back-link">← All Properties</a>
 
+        {{if .Property.PhotoURL}}
+        <div class="hero-photo">
+            <img src="{{.Property.PhotoURL}}" alt="{{.Property.Address}}">
+        </div>
+        {{end}}
+
         <div class="card">
             <h2>{{.Property.Address}}</h2>
             <div class="detail-grid">

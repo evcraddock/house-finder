@@ -320,3 +320,9 @@ tr.rating-1 { background-color: rgba(239, 68, 68, 0.25); }
 [data-theme="dark"] tr.rating-3 { background-color: rgba(59, 130, 246, 0.25); }
 [data-theme="dark"] tr.rating-2 { background-color: rgba(250, 204, 21, 0.3); }
 [data-theme="dark"] tr.rating-1 { background-color: rgba(239, 68, 68, 0.3); }
+
+/* Property photo thumbnails */
+.list-thumb { width: 60px; height: 45px; object-fit: cover; border-radius: 4px; display: block; }
+.thumb-cell { width: 60px; padding: 4px !important; }
+.hero-photo { margin-bottom: 1rem; border-radius: 8px; overflow: hidden; }
+.hero-photo img { width: 100%; max-height: 400px; object-fit: cover; display: block; }
