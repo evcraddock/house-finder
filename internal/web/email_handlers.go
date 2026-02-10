@@ -3,8 +3,10 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 
+	"github.com/evcraddock/house-finder/internal/auth"
 	"github.com/evcraddock/house-finder/internal/email"
 	"github.com/evcraddock/house-finder/internal/property"
 )
@@ -131,10 +133,12 @@ func (s *Server) handleAPIEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if sendErr := email.Send(s.smtpCfg, recipients, subject, body); sendErr != nil {
+		slog.Error("email send failed", "to", recipients, "err", sendErr)
 		apiError(w, fmt.Sprintf("sending email: %v", sendErr), http.StatusInternalServerError)
 		return
 	}
 
+	slog.Info("email sent", "to", recipients, "properties", len(props), "user", auth.UserEmailFromContext(r))
 	resp.Sent = true
 	apiJSON(w, resp, http.StatusOK)
 }

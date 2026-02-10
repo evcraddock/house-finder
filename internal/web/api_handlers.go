@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -129,7 +130,7 @@ func (s *Server) handleAPIProperties(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		s.apiGetProperty(w, id)
 	case http.MethodDelete:
-		s.apiDeleteProperty(w, id)
+		s.apiDeleteProperty(w, r, id)
 	default:
 		apiError(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -184,10 +185,12 @@ func (s *Server) apiAddProperty(w http.ResponseWriter, r *http.Request) {
 
 	p, err := s.propService.Add(strings.TrimSpace(req.Address))
 	if err != nil {
+		slog.Error("property add failed", "address", req.Address, "err", err)
 		apiError(w, fmt.Sprintf("adding property: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	slog.Info("property added", "id", p.ID, "address", p.Address, "user", auth.UserEmailFromContext(r))
 	apiJSON(w, p, http.StatusCreated)
 }
 
@@ -221,11 +224,12 @@ func (s *Server) apiGetProperty(w http.ResponseWriter, id int64) {
 }
 
 // apiDeleteProperty removes a property and its comments.
-func (s *Server) apiDeleteProperty(w http.ResponseWriter, id int64) {
+func (s *Server) apiDeleteProperty(w http.ResponseWriter, r *http.Request, id int64) {
 	if err := s.propRepo.Delete(id); err != nil {
 		apiError(w, fmt.Sprintf("deleting property: %v", err), http.StatusInternalServerError)
 		return
 	}
+	slog.Info("property deleted", "id", id, "user", auth.UserEmailFromContext(r))
 	apiJSON(w, map[string]interface{}{"id": id, "removed": true}, http.StatusOK)
 }
 

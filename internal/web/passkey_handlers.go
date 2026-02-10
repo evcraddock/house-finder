@@ -2,7 +2,7 @@ package web
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -69,7 +69,7 @@ func (h *passkeyHandlers) handleBeginRegistration(w http.ResponseWriter, r *http
 
 	creds, err := h.passkeys.WebAuthnCredentials(email)
 	if err != nil {
-		log.Printf("Error loading credentials: %v", err)
+		slog.Error("loading credentials", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -86,7 +86,7 @@ func (h *passkeyHandlers) handleBeginRegistration(w http.ResponseWriter, r *http
 		webauthn.WithExclusions(excludeList),
 	)
 	if err != nil {
-		log.Printf("Error beginning registration: %v", err)
+		slog.Error("beginning registration", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -97,7 +97,7 @@ func (h *passkeyHandlers) handleBeginRegistration(w http.ResponseWriter, r *http
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(creation); err != nil {
-		log.Printf("Error encoding registration options: %v", err)
+		slog.Error("encoding registration options", "err", err)
 	}
 }
 
@@ -123,7 +123,7 @@ func (h *passkeyHandlers) handleFinishRegistration(w http.ResponseWriter, r *htt
 
 	creds, err := h.passkeys.WebAuthnCredentials(email)
 	if err != nil {
-		log.Printf("Error loading credentials: %v", err)
+		slog.Error("loading credentials", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -132,7 +132,7 @@ func (h *passkeyHandlers) handleFinishRegistration(w http.ResponseWriter, r *htt
 
 	credential, err := h.wan.FinishRegistration(user, *session, r)
 	if err != nil {
-		log.Printf("Error finishing registration: %v", err)
+		slog.Error("finishing registration", "err", err)
 		http.Error(w, "Registration failed", http.StatusBadRequest)
 		return
 	}
@@ -144,14 +144,14 @@ func (h *passkeyHandlers) handleFinishRegistration(w http.ResponseWriter, r *htt
 	}
 
 	if err := h.passkeys.Save(email, name, credential); err != nil {
-		log.Printf("Error saving credential: %v", err)
+		slog.Error("saving credential", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
-		log.Printf("Error encoding response: %v", err)
+		slog.Error("encoding response", "err", err)
 	}
 }
 
@@ -159,7 +159,7 @@ func (h *passkeyHandlers) handleFinishRegistration(w http.ResponseWriter, r *htt
 func (h *passkeyHandlers) handleBeginLogin(w http.ResponseWriter, r *http.Request) {
 	assertion, session, err := h.wan.BeginDiscoverableLogin()
 	if err != nil {
-		log.Printf("Error beginning passkey login: %v", err)
+		slog.Error("beginning passkey login", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -170,7 +170,7 @@ func (h *passkeyHandlers) handleBeginLogin(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(assertion); err != nil {
-		log.Printf("Error encoding login options: %v", err)
+		slog.Error("encoding login options", "err", err)
 	}
 }
 
@@ -213,19 +213,20 @@ func (h *passkeyHandlers) handleFinishLogin(w http.ResponseWriter, r *http.Reque
 
 	_, _, err := h.wan.FinishPasskeyLogin(handler, *session, r)
 	if err != nil {
-		log.Printf("Error finishing passkey login: %v", err)
+		slog.Error("finishing passkey login", "err", err)
 		http.Error(w, "Login failed", http.StatusUnauthorized)
 		return
 	}
 
 	if err := h.sessions.Create(w, loggedInEmail); err != nil {
-		log.Printf("Error creating session: %v", err)
+		slog.Error("creating session", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
+	slog.Info("login success", "email", loggedInEmail, "method", "passkey")
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
-		log.Printf("Error encoding response: %v", err)
+		slog.Error("encoding response", "err", err)
 	}
 }

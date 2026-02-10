@@ -3,6 +3,7 @@ package auth
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -116,7 +117,7 @@ func (s *UserStore) List() ([]*User, error) {
 	}
 	defer func() {
 		if cerr := rows.Close(); cerr != nil {
-			fmt.Printf("warning: closing rows: %v\n", cerr)
+			slog.Warn("closing rows", "err", cerr)
 		}
 	}()
 
@@ -174,7 +175,7 @@ func (s *UserStore) AllEmails() ([]string, error) {
 	}
 	defer func() {
 		if cerr := rows.Close(); cerr != nil {
-			fmt.Printf("warning: closing rows: %v\n", cerr)
+			slog.Warn("closing rows", "err", cerr)
 		}
 	}()
 

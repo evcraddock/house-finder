@@ -1,7 +1,7 @@
 package web
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -59,14 +59,14 @@ func (h *authHandlers) handleLoginSubmit(w http.ResponseWriter, r *http.Request)
 	if h.users.IsAuthorized(email) {
 		token, err := h.tokens.Create(email)
 		if err != nil {
-			// Log internally but don't reveal to user
-			log.Printf("Error creating token: %v\n", err)
+			slog.Error("token creation failed", "email", email, "err", err)
 			h.render(w, "login.html", loginData{Message: successMsg, HasPasskeys: hp})
 			return
 		}
 
+		slog.Info("login attempt", "email", email)
 		if _, err := h.mailer.SendMagicLink(email, token); err != nil {
-			log.Printf("Error sending magic link: %v\n", err)
+			slog.Error("magic link send failed", "email", email, "err", err)
 		}
 	}
 
@@ -84,23 +84,25 @@ func (h *authHandlers) handleVerify(w http.ResponseWriter, r *http.Request) {
 
 	email, err := h.tokens.Validate(token)
 	if err != nil {
+		slog.Warn("token validation failed", "err", err)
 		h.render(w, "login.html", loginData{Error: "Invalid or expired login link. Please request a new one.", HasPasskeys: hp})
 		return
 	}
 
 	if err := h.sessions.Create(w, email); err != nil {
-		log.Printf("Error creating session: %v\n", err)
+		slog.Error("session creation failed", "email", email, "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
+	slog.Info("login success", "email", email, "method", "magic_link")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // handleLogout destroys the session and redirects to login.
 func (h *authHandlers) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if err := h.sessions.Destroy(w, r); err != nil {
-		log.Printf("Error destroying session: %v\n", err)
+		slog.Error("session destroy failed", "err", err)
 	}
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
