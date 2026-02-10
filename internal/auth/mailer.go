@@ -2,8 +2,8 @@ package auth
 
 import (
 	"fmt"
-	"net/smtp"
-	"strings"
+
+	"github.com/evcraddock/house-finder/internal/email"
 )
 
 // Mailer sends magic link emails.
@@ -18,12 +18,14 @@ func NewMailer(config Config) *Mailer {
 
 // SendMagicLink sends a magic link email or logs it in dev mode.
 // Returns the magic link URL (useful for dev mode logging by caller).
-func (m *Mailer) SendMagicLink(email, token string) (string, error) {
+func (m *Mailer) SendMagicLink(addr, token string) (string, error) {
 	link := fmt.Sprintf("%s/auth/verify?token=%s", m.config.BaseURL, token)
 
 	if m.config.DevMode {
-		fmt.Printf("[DEV] Magic link for %s: %s\n", email, link)
-		return link, nil
+		fmt.Printf("[DEV] Magic link for %s: %s\n", addr, link)
+		if !m.smtpConfigured() {
+			return link, nil
+		}
 	}
 
 	subject := "House Finder — Login Link"
@@ -32,24 +34,22 @@ func (m *Mailer) SendMagicLink(email, token string) (string, error) {
 		link,
 	)
 
-	msg := buildEmail(m.config.SMTPFrom, email, subject, body)
-	addr := fmt.Sprintf("%s:%s", m.config.SMTPHost, m.config.SMTPPort)
-	auth := smtp.PlainAuth("", m.config.SMTPUser, m.config.SMTPPass, m.config.SMTPHost)
-
-	if err := smtp.SendMail(addr, auth, m.config.SMTPFrom, []string{email}, msg); err != nil {
-		return "", fmt.Errorf("sending email: %w", err)
+	if err := m.send(addr, subject, body); err != nil {
+		return "", err
 	}
 
 	return link, nil
 }
 
 // SendCLIMagicLink sends a magic link that redirects to /cli/auth/verify.
-func (m *Mailer) SendCLIMagicLink(email, token string) (string, error) {
+func (m *Mailer) SendCLIMagicLink(addr, token string) (string, error) {
 	link := fmt.Sprintf("%s/cli/auth/verify?token=%s", m.config.BaseURL, token)
 
 	if m.config.DevMode {
-		fmt.Printf("[DEV] CLI magic link for %s: %s\n", email, link)
-		return link, nil
+		fmt.Printf("[DEV] CLI magic link for %s: %s\n", addr, link)
+		if !m.smtpConfigured() {
+			return link, nil
+		}
 	}
 
 	subject := "House Finder — CLI Login Link"
@@ -58,25 +58,25 @@ func (m *Mailer) SendCLIMagicLink(email, token string) (string, error) {
 		link,
 	)
 
-	msg := buildEmail(m.config.SMTPFrom, email, subject, body)
-	addr := fmt.Sprintf("%s:%s", m.config.SMTPHost, m.config.SMTPPort)
-	auth := smtp.PlainAuth("", m.config.SMTPUser, m.config.SMTPPass, m.config.SMTPHost)
-
-	if err := smtp.SendMail(addr, auth, m.config.SMTPFrom, []string{email}, msg); err != nil {
-		return "", fmt.Errorf("sending email: %w", err)
+	if err := m.send(addr, subject, body); err != nil {
+		return "", err
 	}
 
 	return link, nil
 }
 
-func buildEmail(from, to, subject, body string) []byte {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("From: %s\r\n", from))
-	sb.WriteString(fmt.Sprintf("To: %s\r\n", to))
-	sb.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
-	sb.WriteString("MIME-Version: 1.0\r\n")
-	sb.WriteString("Content-Type: text/plain; charset=\"UTF-8\"\r\n")
-	sb.WriteString("\r\n")
-	sb.WriteString(body)
-	return []byte(sb.String())
+func (m *Mailer) smtpConfigured() bool {
+	return m.config.SMTPHost != "" && m.config.SMTPFrom != ""
+}
+
+func (m *Mailer) send(to, subject, body string) error {
+	cfg := email.SMTPConfig{
+		Host: m.config.SMTPHost,
+		Port: m.config.SMTPPort,
+		User: m.config.SMTPUser,
+		Pass: m.config.SMTPPass,
+		From: m.config.SMTPFrom,
+	}
+
+	return email.Send(cfg, []string{to}, subject, body)
 }
