@@ -230,6 +230,28 @@ td.rating { font-size: 1.1rem; }
 .nav-link.active { font-weight: 600; }
 header { display: flex; justify-content: space-between; align-items: center; }
 
+/* Settings icon in header */
+.settings-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 50%;
+    color: #6b7280; transition: color 0.15s, background 0.15s;
+}
+.settings-icon:hover { color: #2563eb; background: rgba(37,99,235,0.08); }
+.settings-icon.active { color: #2563eb; }
+[data-theme="dark"] .settings-icon { color: #9ca3af; }
+[data-theme="dark"] .settings-icon:hover { color: #60a5fa; background: rgba(96,165,250,0.1); }
+[data-theme="dark"] .settings-icon.active { color: #60a5fa; }
+
+/* Theme toggle on settings page */
+.theme-setting { display: flex; align-items: center; justify-content: space-between; }
+.theme-toggle-btn {
+    padding: 0.4rem 1rem; border: 1px solid #d1d5db; border-radius: 6px;
+    background: #fff; cursor: pointer; font-size: 0.9rem; min-height: 44px;
+}
+.theme-toggle-btn:hover { border-color: #2563eb; }
+[data-theme="dark"] .theme-toggle-btn { background: #1f2937; border-color: #4b5563; color: #e5e7eb; }
+[data-theme="dark"] .theme-toggle-btn:hover { border-color: #60a5fa; }
+
 /* Settings page */
 .settings-info { color: #6b7280; margin-bottom: 1rem; font-size: 0.95rem; }
 .passkey-table { margin-bottom: 1rem; }
@@ -337,12 +359,9 @@ tr.rating-1 { background-color: rgba(239, 68, 68, 0.25); }
 @media (max-width: 600px) {
     body { padding: 0.5rem; }
 
-    /* Header: stack vertically */
-    header { flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 0; margin-bottom: 1rem; }
-    header h1 { font-size: 1.25rem; width: 100%; }
-    .header-nav { gap: 0.75rem; }
-    .nav-link { font-size: 0.95rem; min-height: 44px; display: inline-flex; align-items: center; }
-    .theme-toggle { min-width: 44px; min-height: 44px; }
+    /* Header */
+    header { padding: 0.75rem 0; margin-bottom: 1rem; }
+    header h1 { font-size: 1.25rem; }
 
     /* Tabs: tappable */
     .tab { padding: 0.75rem 1rem; min-height: 44px; font-size: 0.9rem; }

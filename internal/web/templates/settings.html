@@ -12,14 +12,7 @@
 <body>
     <header>
         <h1><a href="/">House Finder</a></h1>
-        <nav class="header-nav">
-            {{if .IsAdmin}}<a href="/admin/users" class="nav-link">Users</a>{{end}}
-            <a href="/settings" class="nav-link active">Settings</a>
-            <a href="/auth/logout" class="nav-link">Logout</a>
-        </nav>
-        <button class="theme-toggle" onclick="var d=document.documentElement;var t=d.getAttribute('data-theme')==='dark'?'light':'dark';d.setAttribute('data-theme',t);localStorage.setItem('theme',t);this.textContent=t==='dark'?'☀️':'🌙';" id="theme-btn">
-            <script>document.write(localStorage.getItem('theme')==='dark'?'☀️':'🌙')</script>
-        </button>
+        <a href="/settings" class="settings-icon active" aria-label="Settings"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
     </header>
     <main>
         <a href="/" class="back-link">← Properties</a>
@@ -94,6 +87,22 @@
             <a href="/admin/users" class="btn">Manage Users →</a>
         </div>
         {{end}}
+
+        <!-- Appearance -->
+        <div class="card">
+            <h2>Appearance</h2>
+            <div class="theme-setting">
+                <span>Dark Mode</span>
+                <button class="theme-toggle-btn" onclick="var d=document.documentElement;var t=d.getAttribute('data-theme')==='dark'?'light':'dark';d.setAttribute('data-theme',t);localStorage.setItem('theme',t);this.textContent=t==='dark'?'On':'Off';" id="theme-btn">
+                    <script>document.write(localStorage.getItem('theme')==='dark'?'On':'Off')</script>
+                </button>
+            </div>
+        </div>
+
+        <!-- Account -->
+        <div class="card">
+            <a href="/auth/logout" class="btn btn-secondary">Log Out</a>
+        </div>
 
     </main>
 
