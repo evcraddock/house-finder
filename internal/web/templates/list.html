@@ -38,6 +38,7 @@
         <table>
             <thead>
                 <tr>
+                    <th></th>
                     <th>Rating</th>
                     <th>Address</th>
                     <th>Price</th>
@@ -49,6 +50,7 @@
             <tbody>
                 {{range .Properties}}
                 <tr class="{{ratingClass .Rating}}">
+                    <td class="thumb-cell">{{if .PhotoURL}}<img src="{{.PhotoURL}}" alt="" class="list-thumb">{{end}}</td>
                     <td class="rating">{{formatRating .Rating}}</td>
                     <td><a href="/property/{{.ID}}">{{.Address}}</a></td>
                     <td class="price">{{formatPrice .Price}}</td>
