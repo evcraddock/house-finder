@@ -16,7 +16,7 @@ RUN CGO_ENABLED=1 go build \
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
+    ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /hf /usr/local/bin/hf
@@ -26,6 +26,9 @@ RUN mkdir -p /data
 ENV HF_DB_PATH=/data/houses.db
 
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
+  CMD ["curl", "-f", "http://localhost:8080/health"]
 
 ENTRYPOINT ["hf"]
 CMD ["serve", "--port", "8080", "--db", "/data/houses.db"]

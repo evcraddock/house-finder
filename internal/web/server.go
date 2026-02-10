@@ -128,6 +128,15 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 		render:   s.render,
 	}
 
+	// Health check (no auth)
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if _, err := fmt.Fprint(w, `{"status":"ok"}`); err != nil {
+			http.Error(w, "write error", http.StatusInternalServerError)
+		}
+	})
+
 	// Public routes
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticContent))))
 	mux.HandleFunc("/login", ah.handleLoginPage)
