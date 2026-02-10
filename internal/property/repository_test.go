@@ -183,6 +183,74 @@ func TestListFilterByRating(t *testing.T) {
 	}
 }
 
+func TestListFilterByVisited(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "test.db")
+	d, err := db.Open(path)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() {
+		if cerr := d.Close(); cerr != nil {
+			t.Errorf("close db: %v", cerr)
+		}
+	})
+
+	repo := NewRepository(d)
+
+	// Insert 3 properties
+	var ids []int64
+	for i := 0; i < 3; i++ {
+		p := &Property{
+			Address:    fmt.Sprintf("%d Visit St", i),
+			MprID:      fmt.Sprintf("M-VISIT-%d", i),
+			RealtorURL: fmt.Sprintf("/detail/visit-%d", i),
+			RawJSON:    json.RawMessage(`{}`),
+		}
+		saved, insertErr := repo.Insert(p)
+		if insertErr != nil {
+			t.Fatalf("insert %d: %v", i, insertErr)
+		}
+		ids = append(ids, saved.ID)
+	}
+
+	// Add a visit to the first property only
+	if _, err := d.Exec(
+		"INSERT INTO visits (property_id, visit_date, visit_type) VALUES (?, ?, ?)",
+		ids[0], "2026-02-08", "showing",
+	); err != nil {
+		t.Fatalf("insert visit: %v", err)
+	}
+
+	// All properties
+	all, err := repo.List(ListOptions{})
+	if err != nil {
+		t.Fatalf("list all: %v", err)
+	}
+	if len(all) != 3 {
+		t.Errorf("all: got %d, want 3", len(all))
+	}
+
+	// Visited only
+	visitedTrue := true
+	visited, err := repo.List(ListOptions{Visited: &visitedTrue})
+	if err != nil {
+		t.Fatalf("list visited: %v", err)
+	}
+	if len(visited) != 1 {
+		t.Errorf("visited: got %d, want 1", len(visited))
+	}
+
+	// Not visited only
+	visitedFalse := false
+	notVisited, err := repo.List(ListOptions{Visited: &visitedFalse})
+	if err != nil {
+		t.Fatalf("list not visited: %v", err)
+	}
+	if len(notVisited) != 2 {
+		t.Errorf("not visited: got %d, want 2", len(notVisited))
+	}
+}
+
 func TestUpdateRating(t *testing.T) {
 	repo := testRepo(t)
 
