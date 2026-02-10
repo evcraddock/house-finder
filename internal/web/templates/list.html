@@ -37,7 +37,6 @@
                     <th>Beds</th>
                     <th>Baths</th>
                     <th>Sqft</th>
-                    <th>Visit</th>
                 </tr>
             </thead>
             <tbody>
@@ -49,7 +48,6 @@
                     <td>{{formatFloat .Bedrooms}}</td>
                     <td>{{formatFloat .Bathrooms}}</td>
                     <td>{{formatInt .Sqft}}</td>
-                    <td>{{index $.LastVisits .ID}}</td>
                 </tr>
                 {{end}}
             </tbody>

@@ -11,7 +11,6 @@ import (
 
 type listData struct {
 	Properties    []*property.Property
-	LastVisits    map[int64]string // property_id -> visit type label
 	IsAdmin       bool
 	Tab           string // "not-visited" or "visited"
 	NotVisitedCnt int
@@ -58,22 +57,10 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 		props = notVisitedProps
 	}
 
-	lastVisitMap, err := s.visitRepo.LastVisitByProperty()
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error loading visits: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	lastVisits := make(map[int64]string)
-	for propID, v := range lastVisitMap {
-		lastVisits[propID] = v.VisitType.Label()
-	}
-
 	email, sessionErr := s.sessions.Validate(r)
 	isAdmin := sessionErr == nil && s.users.IsAdmin(email)
 	s.render(w, "list.html", listData{
 		Properties:    props,
-		LastVisits:    lastVisits,
 		IsAdmin:       isAdmin,
 		Tab:           tab,
 		NotVisitedCnt: len(notVisitedProps),
