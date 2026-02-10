@@ -292,3 +292,30 @@ func insertTestProperty(t *testing.T, d *sql.DB, address, mprID string) {
 		t.Fatalf("insert test property: %v", err)
 	}
 }
+
+func TestTmplRatingClass(t *testing.T) {
+	tests := []struct {
+		name   string
+		rating *int64
+		want   string
+	}{
+		{"nil", nil, ""},
+		{"rating 1", ptr(int64(1)), "rating-1"},
+		{"rating 2", ptr(int64(2)), "rating-2"},
+		{"rating 3", ptr(int64(3)), "rating-3"},
+		{"rating 4", ptr(int64(4)), "rating-4"},
+		{"rating 0", ptr(int64(0)), ""},
+		{"rating 5", ptr(int64(5)), ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tmplRatingClass(tt.rating)
+			if got != tt.want {
+				t.Errorf("tmplRatingClass(%v) = %q, want %q", tt.rating, got, tt.want)
+			}
+		})
+	}
+}
+
+func ptr(v int64) *int64 { return &v }
