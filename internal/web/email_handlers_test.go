@@ -32,8 +32,18 @@ func TestAPIEmailDryRun(t *testing.T) {
 	if resp.Sent {
 		t.Error("expected sent=false for dry run")
 	}
-	if len(resp.To) != 1 || resp.To[0] != "realtor@example.com" {
-		t.Errorf("to = %v, want [realtor@example.com]", resp.To)
+	if len(resp.To) < 1 {
+		t.Error("expected at least one recipient")
+	}
+	// Admin is always included
+	hasAdmin := false
+	for _, r := range resp.To {
+		if r == "admin@example.com" {
+			hasAdmin = true
+		}
+	}
+	if !hasAdmin {
+		t.Errorf("to = %v, expected admin@example.com", resp.To)
 	}
 	if resp.Subject == "" {
 		t.Error("expected non-empty subject")
@@ -43,15 +53,24 @@ func TestAPIEmailDryRun(t *testing.T) {
 	}
 }
 
-func TestAPIEmailNoRealtors(t *testing.T) {
+func TestAPIEmailAdminOnly(t *testing.T) {
 	srv, d, token := testAPIServerWithDB(t)
 	insertAPITestProperty(t, d)
 
+	// No extra users — admin is still a recipient
 	body := map[string]interface{}{"dry_run": true}
 	w := apiRequest(t, srv, "POST", "/api/email", token, body)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	var resp emailResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.To) != 1 || resp.To[0] != "admin@example.com" {
+		t.Errorf("to = %v, want [admin@example.com]", resp.To)
 	}
 }
 

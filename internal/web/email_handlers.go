@@ -36,20 +36,26 @@ func (s *Server) handleAPIEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find realtor recipients
+	// Find recipients — all authorized users plus admin
 	allUsers, err := s.users.List()
 	if err != nil {
 		apiError(w, fmt.Sprintf("listing users: %v", err), http.StatusInternalServerError)
 		return
 	}
+	seen := make(map[string]bool)
 	var recipients []string
+	if s.authCfg.AdminEmail != "" {
+		recipients = append(recipients, s.authCfg.AdminEmail)
+		seen[s.authCfg.AdminEmail] = true
+	}
 	for _, u := range allUsers {
-		if u.IsRealtor && u.Email != "" {
+		if u.Email != "" && !seen[u.Email] {
 			recipients = append(recipients, u.Email)
+			seen[u.Email] = true
 		}
 	}
 	if len(recipients) == 0 {
-		apiError(w, "no realtors configured — add a user with the realtor flag", http.StatusBadRequest)
+		apiError(w, "no authorized users configured", http.StatusBadRequest)
 		return
 	}
 
