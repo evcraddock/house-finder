@@ -12,8 +12,9 @@ import (
 type listData struct {
 	Properties    []*property.Property
 	IsAdmin       bool
-	Tab           string // "not-visited" or "visited"
+	Tab           string // "not-visited", "scheduled", or "visited"
 	NotVisitedCnt int
+	ScheduledCnt  int
 	VisitedCnt    int
 }
 
@@ -32,28 +33,34 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tab := r.URL.Query().Get("tab")
-	if tab != "visited" {
+	if tab != "scheduled" && tab != "visited" {
 		tab = "not-visited"
 	}
 
-	// Get counts for both tabs
-	visitedTrue := true
-	visitedFalse := false
-	notVisitedProps, err := s.propRepo.List(property.ListOptions{Visited: &visitedFalse})
+	// Get counts for all three tabs
+	notVisitedProps, err := s.propRepo.List(property.ListOptions{Status: property.StatusNotVisited})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error loading properties: %v", err), http.StatusInternalServerError)
 		return
 	}
-	visitedProps, err := s.propRepo.List(property.ListOptions{Visited: &visitedTrue})
+	scheduledProps, err := s.propRepo.List(property.ListOptions{Status: property.StatusScheduled})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error loading properties: %v", err), http.StatusInternalServerError)
+		return
+	}
+	visitedProps, err := s.propRepo.List(property.ListOptions{Status: property.StatusVisited})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error loading properties: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	var props []*property.Property
-	if tab == "visited" {
+	switch tab {
+	case "scheduled":
+		props = scheduledProps
+	case "visited":
 		props = visitedProps
-	} else {
+	default:
 		props = notVisitedProps
 	}
 
@@ -64,6 +71,7 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 		IsAdmin:       isAdmin,
 		Tab:           tab,
 		NotVisitedCnt: len(notVisitedProps),
+		ScheduledCnt:  len(scheduledProps),
 		VisitedCnt:    len(visitedProps),
 	})
 }

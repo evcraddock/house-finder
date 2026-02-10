@@ -21,7 +21,7 @@ const insertSQL = `INSERT INTO properties
 	(address, mpr_id, realtor_url, price, bedrooms, bathrooms, sqft, lot_size, year_built, property_type, status, raw_json)
 	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-const selectColumns = `id, address, mpr_id, realtor_url, price, bedrooms, bathrooms, sqft, lot_size, year_built, property_type, status, rating, raw_json, created_at, updated_at`
+const selectColumns = `id, address, mpr_id, realtor_url, price, bedrooms, bathrooms, sqft, lot_size, year_built, property_type, status, rating, visited, raw_json, created_at, updated_at`
 
 // Insert adds a new property and returns it with its generated ID.
 func (r *Repository) Insert(p *Property) (*Property, error) {
@@ -59,10 +59,21 @@ func (r *Repository) GetByID(id int64) (*Property, error) {
 	return p, nil
 }
 
+// PropertyStatus is a three-way filter for property visit status.
+type PropertyStatus string
+
+const (
+	StatusAll        PropertyStatus = ""
+	StatusNotVisited PropertyStatus = "not-visited"
+	StatusScheduled  PropertyStatus = "scheduled"
+	StatusVisited    PropertyStatus = "visited"
+)
+
 // ListOptions controls filtering for List.
 type ListOptions struct {
 	MinRating *int
-	Visited   *bool // nil = all, true = visited only, false = not visited only
+	Visited   *bool          // DEPRECATED: use Status instead
+	Status    PropertyStatus // three-way filter: not-visited, scheduled, visited
 }
 
 // List returns all properties, optionally filtered.
@@ -76,11 +87,25 @@ func (r *Repository) List(opts ListOptions) ([]*Property, error) {
 		args = append(args, *opts.MinRating)
 	}
 
-	if opts.Visited != nil {
-		if *opts.Visited {
-			conditions = append(conditions, "id IN (SELECT DISTINCT property_id FROM visits)")
-		} else {
+	if opts.Status != StatusAll {
+		switch opts.Status {
+		case StatusNotVisited:
+			// No visits at all AND not manually marked visited
+			conditions = append(conditions, "visited = 0")
 			conditions = append(conditions, "id NOT IN (SELECT DISTINCT property_id FROM visits)")
+		case StatusScheduled:
+			// Has a visit with date >= today
+			conditions = append(conditions, "id IN (SELECT DISTINCT property_id FROM visits WHERE visit_date >= date('now'))")
+		case StatusVisited:
+			// Manually marked visited, OR has visits but none in the future
+			conditions = append(conditions, "(visited = 1 OR (id IN (SELECT DISTINCT property_id FROM visits) AND id NOT IN (SELECT DISTINCT property_id FROM visits WHERE visit_date >= date('now'))))")
+		}
+	} else if opts.Visited != nil {
+		// Backward compat for API ?visited=true/false
+		if *opts.Visited {
+			conditions = append(conditions, "(visited = 1 OR id IN (SELECT DISTINCT property_id FROM visits))")
+		} else {
+			conditions = append(conditions, "visited = 0 AND id NOT IN (SELECT DISTINCT property_id FROM visits)")
 		}
 	}
 
@@ -128,6 +153,32 @@ func (r *Repository) UpdateRating(id int64, rating int) error {
 	)
 	if err != nil {
 		return fmt.Errorf("updating rating: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("checking rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("property %d not found", id)
+	}
+
+	return nil
+}
+
+// UpdateVisited sets the visited flag on a property.
+func (r *Repository) UpdateVisited(id int64, visited bool) error {
+	v := 0
+	if visited {
+		v = 1
+	}
+
+	result, err := r.db.Exec(
+		"UPDATE properties SET visited = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+		v, id,
+	)
+	if err != nil {
+		return fmt.Errorf("updating visited: %w", err)
 	}
 
 	rows, err := result.RowsAffected()

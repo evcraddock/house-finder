@@ -68,6 +68,14 @@
 
         {{template "rating-partial" .}}
 
+        <div class="card">
+            <label class="checkbox-label visited-toggle">
+                <input type="checkbox" id="visited-checkbox"{{if .Property.Visited}} checked{{end}}
+                    onchange="toggleVisited({{.Property.ID}}, this.checked)">
+                Visited
+            </label>
+        </div>
+
         <div class="card" id="visits-section">
             <h2>Visits</h2>
             <div id="visits-list"></div>
@@ -105,6 +113,20 @@
         var d = document.createElement('div');
         d.textContent = s;
         return d.innerHTML;
+    }
+
+    async function toggleVisited(propID, visited) {
+        try {
+            var resp = await fetch('/api/properties/' + propID + '/visited', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({visited: visited})
+            });
+            if (!resp.ok) throw new Error('Failed to update');
+        } catch (e) {
+            // Revert checkbox on error
+            document.getElementById('visited-checkbox').checked = !visited;
+        }
     }
 
     var visitTypeLabels = {showing: 'Showing', drive_by: 'Drive-by', open_house: 'Open House'};

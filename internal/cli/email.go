@@ -12,24 +12,21 @@ import (
 
 func newEmailCmd() *cobra.Command {
 	var (
-		minRating  int
-		visited    bool
-		notVisited bool
-		dryRun     bool
+		minRating int
+		status    string
+		all       bool
+		dryRun    bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   "email [property IDs...]",
 		Short: "Email properties to realtor",
-		Long: `Send an email to your realtor with a formatted list of properties.
+		Long: `Send an email with a formatted list of properties.
 
-By default sends all properties. Use flags or pass specific IDs to filter.
+By default sends only scheduled properties (those with future visits).
+Use --status to filter by status, or --all to include everything.
 Use --dry-run to preview the email without sending.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if visited && notVisited {
-				return fmt.Errorf("cannot use --visited and --not-visited together")
-			}
-
 			req := client.EmailRequest{DryRun: dryRun}
 
 			// Parse property IDs from args
@@ -46,14 +43,12 @@ Use --dry-run to preview the email without sending.`,
 				if minRating > 0 {
 					req.MinRating = &minRating
 				}
-				if visited {
-					v := true
-					req.Visited = &v
+				if all {
+					req.Status = ""
+				} else if status != "" {
+					req.Status = status
 				}
-				if notVisited {
-					v := false
-					req.Visited = &v
-				}
+				// If no status/all flag, server defaults to "scheduled"
 			}
 
 			return runEmail(req)
@@ -61,8 +56,8 @@ Use --dry-run to preview the email without sending.`,
 	}
 
 	cmd.Flags().IntVar(&minRating, "rating", 0, "minimum rating to filter by (1-4)")
-	cmd.Flags().BoolVar(&visited, "visited", false, "include only visited properties")
-	cmd.Flags().BoolVar(&notVisited, "not-visited", false, "include only not-visited properties")
+	cmd.Flags().StringVar(&status, "status", "", "filter by status (not-visited, scheduled, visited)")
+	cmd.Flags().BoolVar(&all, "all", false, "include all properties")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview email without sending")
 
 	return cmd

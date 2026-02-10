@@ -102,6 +102,7 @@ func migrate(db *sql.DB) error {
 		{"api_keys", "email", "TEXT NOT NULL DEFAULT ''"},
 		{"authorized_users", "phone", "TEXT NOT NULL DEFAULT ''"},
 		{"authorized_users", "is_realtor", "INTEGER NOT NULL DEFAULT 0"},
+		{"properties", "visited", "INTEGER NOT NULL DEFAULT 0"},
 	}
 
 	for _, cm := range columnMigrations {

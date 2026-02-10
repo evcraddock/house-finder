@@ -22,6 +22,7 @@ type Property struct {
 	PropertyType *string         `json:"property_type,omitempty"`
 	Status       *string         `json:"status,omitempty"`
 	Rating       *int64          `json:"rating,omitempty"`
+	Visited      bool            `json:"visited"`
 	RawJSON      json.RawMessage `json:"raw_json"`
 	CreatedAt    time.Time       `json:"created_at"`
 	UpdatedAt    time.Time       `json:"updated_at"`
@@ -39,7 +40,7 @@ func scanProperty(row interface{ Scan(...interface{}) error }) (*Property, error
 		&p.ID, &p.Address, &p.MprID, &p.RealtorURL,
 		&price, &bedrooms, &bathrooms, &sqft, &lotSize,
 		&yearBuilt, &propertyType, &status, &rating,
-		&rawJSON, &p.CreatedAt, &p.UpdatedAt,
+		&p.Visited, &rawJSON, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err

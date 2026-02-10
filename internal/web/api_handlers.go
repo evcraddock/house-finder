@@ -87,6 +87,22 @@ func (s *Server) handleAPIProperties(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// /api/properties/{id}/visited
+	if strings.HasSuffix(path, "/visited") {
+		idStr := strings.TrimSuffix(path, "/visited")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			apiError(w, "invalid property ID", http.StatusBadRequest)
+			return
+		}
+		if r.Method != http.MethodPost {
+			apiError(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		s.apiSetVisited(w, r, id)
+		return
+	}
+
 	// /api/properties/{id}/rate
 	if strings.HasSuffix(path, "/rate") {
 		idStr := strings.TrimSuffix(path, "/rate")
@@ -130,7 +146,16 @@ func (s *Server) apiListProperties(w http.ResponseWriter, r *http.Request) {
 		}
 		opts.MinRating = &min
 	}
-	if visitedStr := r.URL.Query().Get("visited"); visitedStr != "" {
+	if statusStr := r.URL.Query().Get("status"); statusStr != "" {
+		switch property.PropertyStatus(statusStr) {
+		case property.StatusNotVisited, property.StatusScheduled, property.StatusVisited:
+			opts.Status = property.PropertyStatus(statusStr)
+		default:
+			apiError(w, "status must be not-visited, scheduled, or visited", http.StatusBadRequest)
+			return
+		}
+	} else if visitedStr := r.URL.Query().Get("visited"); visitedStr != "" {
+		// Backward compat
 		switch visitedStr {
 		case "true":
 			v := true
@@ -239,6 +264,24 @@ func (s *Server) apiRateProperty(w http.ResponseWriter, r *http.Request, id int6
 	}
 
 	apiJSON(w, map[string]interface{}{"id": id, "rating": req.Rating}, http.StatusOK)
+}
+
+// apiSetVisited sets the visited flag on a property.
+func (s *Server) apiSetVisited(w http.ResponseWriter, r *http.Request, id int64) {
+	var req struct {
+		Visited bool `json:"visited"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apiError(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.propRepo.UpdateVisited(id, req.Visited); err != nil {
+		apiError(w, fmt.Sprintf("updating visited: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	apiJSON(w, map[string]interface{}{"id": id, "visited": req.Visited}, http.StatusOK)
 }
 
 // apiListComments returns comments for a property.

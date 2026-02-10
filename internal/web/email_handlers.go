@@ -12,7 +12,8 @@ import (
 type emailRequest struct {
 	PropertyIDs []int64 `json:"property_ids"` // specific IDs (optional)
 	MinRating   *int    `json:"min_rating"`   // filter by min rating (optional)
-	Visited     *bool   `json:"visited"`      // filter by visit status (optional)
+	Visited     *bool   `json:"visited"`      // filter by visit status (optional, deprecated)
+	Status      string  `json:"status"`       // not-visited, scheduled, visited (optional)
 	DryRun      bool    `json:"dry_run"`      // preview only, don't send
 }
 
@@ -75,10 +76,12 @@ func (s *Server) handleAPIEmail(w http.ResponseWriter, r *http.Request) {
 			MinRating: req.MinRating,
 			Visited:   req.Visited,
 		}
-		// Default to not-visited if no visit filter specified
-		if opts.Visited == nil {
-			notVisited := false
-			opts.Visited = &notVisited
+		if req.Status != "" {
+			opts.Status = property.PropertyStatus(req.Status)
+		}
+		// Default to scheduled if no filter specified
+		if opts.Visited == nil && opts.Status == "" {
+			opts.Status = property.StatusScheduled
 		}
 		listed, listErr := s.propRepo.List(opts)
 		if listErr != nil {

@@ -9,8 +9,14 @@ import (
 func TestAPIEmailDryRun(t *testing.T) {
 	srv, d, token := testAPIServerWithDB(t)
 
-	// Insert a property
-	insertAPITestProperty(t, d)
+	// Insert a property and schedule a future visit
+	id := insertAPITestProperty(t, d)
+	if _, err := d.Exec(
+		"INSERT INTO visits (property_id, visit_date, visit_type) VALUES (?, ?, ?)",
+		id, "2099-01-01", "showing",
+	); err != nil {
+		t.Fatalf("insert visit: %v", err)
+	}
 
 	// Add a realtor user
 	if _, err := srv.users.Add("realtor@example.com", "Test Realtor", "555-1234", true); err != nil {
@@ -55,7 +61,13 @@ func TestAPIEmailDryRun(t *testing.T) {
 
 func TestAPIEmailAdminOnly(t *testing.T) {
 	srv, d, token := testAPIServerWithDB(t)
-	insertAPITestProperty(t, d)
+	id := insertAPITestProperty(t, d)
+	if _, err := d.Exec(
+		"INSERT INTO visits (property_id, visit_date, visit_type) VALUES (?, ?, ?)",
+		id, "2099-01-01", "showing",
+	); err != nil {
+		t.Fatalf("insert visit: %v", err)
+	}
 
 	// No extra users — admin is still a recipient
 	body := map[string]interface{}{"dry_run": true}

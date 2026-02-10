@@ -251,6 +251,126 @@ func TestListFilterByVisited(t *testing.T) {
 	}
 }
 
+func TestListFilterByStatus(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "test.db")
+	d, err := db.Open(path)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() {
+		if cerr := d.Close(); cerr != nil {
+			t.Errorf("close db: %v", cerr)
+		}
+	})
+
+	repo := NewRepository(d)
+
+	// Insert 4 properties
+	var ids []int64
+	for i := 0; i < 4; i++ {
+		p := &Property{
+			Address:    fmt.Sprintf("%d Status St", i),
+			MprID:      fmt.Sprintf("M-STATUS-%d", i),
+			RealtorURL: fmt.Sprintf("/detail/status-%d", i),
+			RawJSON:    json.RawMessage(`{}`),
+		}
+		saved, insertErr := repo.Insert(p)
+		if insertErr != nil {
+			t.Fatalf("insert %d: %v", i, insertErr)
+		}
+		ids = append(ids, saved.ID)
+	}
+
+	// ids[0]: no visits (not-visited)
+	// ids[1]: past visit (visited)
+	// ids[2]: future visit (scheduled)
+	// ids[3]: manually marked visited
+
+	if _, err := d.Exec(
+		"INSERT INTO visits (property_id, visit_date, visit_type) VALUES (?, ?, ?)",
+		ids[1], "2020-01-01", "showing",
+	); err != nil {
+		t.Fatalf("insert past visit: %v", err)
+	}
+
+	if _, err := d.Exec(
+		"INSERT INTO visits (property_id, visit_date, visit_type) VALUES (?, ?, ?)",
+		ids[2], "2099-01-01", "showing",
+	); err != nil {
+		t.Fatalf("insert future visit: %v", err)
+	}
+
+	if err := repo.UpdateVisited(ids[3], true); err != nil {
+		t.Fatalf("mark visited: %v", err)
+	}
+
+	tests := []struct {
+		name   string
+		status PropertyStatus
+		want   int
+	}{
+		{"not-visited", StatusNotVisited, 1}, // ids[0]
+		{"scheduled", StatusScheduled, 1},    // ids[2]
+		{"visited", StatusVisited, 2},        // ids[1] (past visit) + ids[3] (manual)
+		{"all", StatusAll, 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			props, listErr := repo.List(ListOptions{Status: tt.status})
+			if listErr != nil {
+				t.Fatalf("list: %v", listErr)
+			}
+			if len(props) != tt.want {
+				t.Errorf("got %d, want %d", len(props), tt.want)
+			}
+		})
+	}
+}
+
+func TestUpdateVisited(t *testing.T) {
+	repo := testRepo(t)
+
+	p := &Property{
+		Address:    "123 Visited St",
+		MprID:      "M-VISITED-1",
+		RealtorURL: "/detail/visited-1",
+		RawJSON:    json.RawMessage(`{}`),
+	}
+	saved, err := repo.Insert(p)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	if saved.Visited {
+		t.Error("expected visited=false initially")
+	}
+
+	if err := repo.UpdateVisited(saved.ID, true); err != nil {
+		t.Fatalf("set visited: %v", err)
+	}
+
+	got, err := repo.GetByID(saved.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if !got.Visited {
+		t.Error("expected visited=true after update")
+	}
+
+	if err := repo.UpdateVisited(saved.ID, false); err != nil {
+		t.Fatalf("unset visited: %v", err)
+	}
+
+	got, err = repo.GetByID(saved.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.Visited {
+		t.Error("expected visited=false after unset")
+	}
+}
+
 func TestUpdateRating(t *testing.T) {
 	repo := testRepo(t)
 
