@@ -131,10 +131,7 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 	// Health check (no auth)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := fmt.Fprint(w, `{"status":"ok"}`); err != nil {
-			http.Error(w, "write error", http.StatusInternalServerError)
-		}
+		fmt.Fprint(w, `{"status":"ok"}`) //nolint:errcheck // health check write failure is unrecoverable
 	})
 
 	// Public routes

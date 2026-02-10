@@ -14,6 +14,24 @@ import (
 	"github.com/evcraddock/house-finder/internal/db"
 )
 
+func TestHealthEndpoint(t *testing.T) {
+	srv := testServer(t)
+
+	r := httptest.NewRequest("GET", "/health", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("content-type = %q, want application/json", ct)
+	}
+	if !strings.Contains(w.Body.String(), `"status":"ok"`) {
+		t.Errorf("body = %q, want status ok", w.Body.String())
+	}
+}
+
 func TestHandleListEmpty(t *testing.T) {
 	srv := testServer(t)
 

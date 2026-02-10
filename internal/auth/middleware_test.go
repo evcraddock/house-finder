@@ -81,7 +81,7 @@ func TestRequireAuthAllowsPublicPaths(t *testing.T) {
 
 	handler := RequireAuth(store, inner)
 
-	publicPaths := []string{"/login", "/auth/login", "/auth/verify", "/auth/logout", "/static/style.css", "/cli/auth", "/cli/auth/verify", "/cli/auth/complete"}
+	publicPaths := []string{"/health", "/login", "/auth/login", "/auth/verify", "/auth/logout", "/static/style.css", "/cli/auth", "/cli/auth/verify", "/cli/auth/complete"}
 	for _, path := range publicPaths {
 		t.Run(path, func(t *testing.T) {
 			r := httptest.NewRequest("GET", path, nil)
