@@ -1,0 +1,110 @@
+package web
+
+import (
+	"encoding/json"
+	"net/http"
+	"testing"
+)
+
+func TestAPIEmailDryRun(t *testing.T) {
+	srv, d, token := testAPIServerWithDB(t)
+
+	// Insert a property
+	insertAPITestProperty(t, d)
+
+	// Add a realtor user
+	if _, err := srv.users.Add("realtor@example.com", "Test Realtor", "555-1234", true); err != nil {
+		t.Fatalf("add realtor: %v", err)
+	}
+
+	body := map[string]interface{}{"dry_run": true}
+	w := apiRequest(t, srv, "POST", "/api/email", token, body)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	var resp emailResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if resp.Sent {
+		t.Error("expected sent=false for dry run")
+	}
+	if len(resp.To) != 1 || resp.To[0] != "realtor@example.com" {
+		t.Errorf("to = %v, want [realtor@example.com]", resp.To)
+	}
+	if resp.Subject == "" {
+		t.Error("expected non-empty subject")
+	}
+	if resp.Body == "" {
+		t.Error("expected non-empty body")
+	}
+}
+
+func TestAPIEmailNoRealtors(t *testing.T) {
+	srv, d, token := testAPIServerWithDB(t)
+	insertAPITestProperty(t, d)
+
+	body := map[string]interface{}{"dry_run": true}
+	w := apiRequest(t, srv, "POST", "/api/email", token, body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAPIEmailNoProperties(t *testing.T) {
+	srv, _, token := testAPIServerWithDB(t)
+
+	if _, err := srv.users.Add("realtor@example.com", "Test Realtor", "", true); err != nil {
+		t.Fatalf("add realtor: %v", err)
+	}
+
+	body := map[string]interface{}{"dry_run": true}
+	w := apiRequest(t, srv, "POST", "/api/email", token, body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAPIEmailWithPropertyIDs(t *testing.T) {
+	srv, d, token := testAPIServerWithDB(t)
+
+	id := insertAPITestProperty(t, d)
+	insertAPITestProperty(t, d) // second property, not included
+
+	if _, err := srv.users.Add("realtor@example.com", "Realtor", "", true); err != nil {
+		t.Fatalf("add realtor: %v", err)
+	}
+
+	body := map[string]interface{}{
+		"property_ids": []int64{id},
+		"dry_run":      true,
+	}
+	w := apiRequest(t, srv, "POST", "/api/email", token, body)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d; body: %s", w.Code, w.Body.String())
+	}
+
+	var resp emailResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if resp.Subject != "Properties to visit (1)" {
+		t.Errorf("subject = %q, want 1 property", resp.Subject)
+	}
+}
+
+func TestAPIEmailMethodNotAllowed(t *testing.T) {
+	srv, _, token := testAPIServerWithDB(t)
+
+	w := apiRequest(t, srv, "GET", "/api/email", token, nil)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusMethodNotAllowed)
+	}
+}

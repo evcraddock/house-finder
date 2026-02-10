@@ -17,6 +17,7 @@ import (
 
 	"github.com/evcraddock/house-finder/internal/auth"
 	"github.com/evcraddock/house-finder/internal/comment"
+	"github.com/evcraddock/house-finder/internal/email"
 	"github.com/evcraddock/house-finder/internal/mls"
 	"github.com/evcraddock/house-finder/internal/property"
 	"github.com/evcraddock/house-finder/internal/visit"
@@ -38,6 +39,8 @@ type Server struct {
 	passkeys    *auth.PasskeyStore
 	apiKeys     *auth.APIKeyStore
 	users       *auth.UserStore
+	smtpCfg     email.SMTPConfig
+	authCfg     auth.Config
 	templates   *template.Template
 	handler     http.Handler
 }
@@ -70,6 +73,14 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 
 	propRepo := property.NewRepository(db)
 
+	smtpCfg := email.SMTPConfig{
+		Host: authCfg.SMTPHost,
+		Port: authCfg.SMTPPort,
+		User: authCfg.SMTPUser,
+		Pass: authCfg.SMTPPass,
+		From: authCfg.SMTPFrom,
+	}
+
 	s := &Server{
 		propRepo:    propRepo,
 		commentRepo: comment.NewRepository(db),
@@ -78,6 +89,8 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 		passkeys:    passkeys,
 		apiKeys:     apiKeys,
 		users:       users,
+		smtpCfg:     smtpCfg,
+		authCfg:     authCfg,
 		templates:   tmpl,
 	}
 
@@ -150,6 +163,7 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 	// REST API endpoints (bearer token auth via RequireAPIKey middleware)
 	mux.HandleFunc("/api/properties", s.handleAPIProperties)
 	mux.HandleFunc("/api/properties/", s.handleAPIProperties)
+	mux.HandleFunc("/api/email", s.handleAPIEmail)
 
 	// Protected routes
 	mux.HandleFunc("/", s.handleList)
