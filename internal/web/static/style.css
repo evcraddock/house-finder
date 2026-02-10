@@ -266,6 +266,17 @@ header { display: flex; justify-content: space-between; align-items: center; }
 [data-theme="dark"] .login-divider::before, [data-theme="dark"] .login-divider::after { background: #4b5563; }
 [data-theme="dark"] .login-divider { color: #6b7280; }
 
+/* Add property form */
+.add-property-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; }
+.add-property-form input[type="text"] { flex: 1; min-width: 200px; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95rem; background: #fff; color: #1f2937; }
+.add-property-form button { padding: 0.5rem 1.2rem; background: #3b82f6; color: #fff; border: none; border-radius: 6px; font-size: 0.95rem; cursor: pointer; white-space: nowrap; }
+.add-property-form button:hover { background: #2563eb; }
+.add-property-form button:disabled { background: #93c5fd; cursor: wait; }
+.add-status { width: 100%; font-size: 0.85rem; min-height: 1.2em; }
+.add-status.error { color: #ef4444; }
+[data-theme="dark"] .add-property-form input[type="text"] { background: #1e293b; color: #e5e7eb; border-color: #374151; }
+[data-theme="dark"] .add-property-form button:disabled { background: #1e40af; }
+
 /* Tabs */
 .tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb; }
 .tab { padding: 0.6rem 1.2rem; text-decoration: none; color: #6b7280; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -2px; }

@@ -27,6 +27,12 @@
             <a href="/?tab=not-visited" class="tab{{if eq .Tab "not-visited"}} active{{end}}">Not Visited ({{.NotVisitedCnt}})</a>
             <a href="/?tab=visited" class="tab{{if eq .Tab "visited"}} active{{end}}">Visited ({{.VisitedCnt}})</a>
         </div>
+        <form id="add-property-form" class="add-property-form" onsubmit="return addProperty(event)">
+            <input type="text" id="add-address" placeholder="Enter address or MLS ID" required autocomplete="off">
+            <button type="submit" id="add-btn">Add</button>
+            <div id="add-status" class="add-status"></div>
+        </form>
+
         {{if .Properties}}
         <table>
             <thead>
@@ -53,8 +59,53 @@
             </tbody>
         </table>
         {{else}}
-        <div class="empty">No properties yet. Use <code>hf add "address"</code> to add one.</div>
+        <div class="empty">No properties in this tab.</div>
         {{end}}
     </main>
+    <script>
+    function addProperty(e) {
+        e.preventDefault();
+        var input = document.getElementById('add-address');
+        var btn = document.getElementById('add-btn');
+        var status = document.getElementById('add-status');
+        var address = input.value.trim();
+        if (!address) return false;
+
+        btn.disabled = true;
+        btn.textContent = 'Looking up…';
+        status.textContent = '';
+        status.className = 'add-status';
+
+        fetch('/api/properties', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({address: address})
+        })
+        .then(function(resp) {
+            return resp.json().then(function(data) {
+                return {ok: resp.ok, data: data};
+            });
+        })
+        .then(function(result) {
+            btn.disabled = false;
+            btn.textContent = 'Add';
+            if (!result.ok) {
+                status.textContent = result.data.error || 'Failed to add property';
+                status.className = 'add-status error';
+                return;
+            }
+            input.value = '';
+            window.location.href = '/?tab=not-visited';
+        })
+        .catch(function(err) {
+            btn.disabled = false;
+            btn.textContent = 'Add';
+            status.textContent = 'Network error: ' + err.message;
+            status.className = 'add-status error';
+        });
+
+        return false;
+    }
+    </script>
 </body>
 </html>
