@@ -39,24 +39,24 @@
             <thead>
                 <tr>
                     <th></th>
-                    <th>Rating</th>
                     <th>Address</th>
                     <th>Price</th>
                     <th>Beds</th>
                     <th>Baths</th>
                     <th>Sqft</th>
+                    <th>Rating</th>
                 </tr>
             </thead>
             <tbody>
                 {{range .Properties}}
                 <tr class="{{ratingClass .Rating}}">
                     <td class="thumb-cell">{{if .PhotoURL}}<img src="{{.PhotoURL}}" alt="" class="list-thumb">{{end}}</td>
-                    <td class="rating">{{formatRating .Rating}}</td>
                     <td><a href="/property/{{.ID}}">{{.Address}}</a></td>
                     <td class="price">{{formatPrice .Price}}</td>
                     <td>{{formatFloat .Bedrooms}}</td>
                     <td>{{formatFloat .Bathrooms}}</td>
                     <td>{{formatInt .Sqft}}</td>
+                    <td class="rating">{{formatRating .Rating}}</td>
                 </tr>
                 {{end}}
             </tbody>
@@ -66,10 +66,10 @@
             <a href="/property/{{.ID}}" class="property-card {{ratingClass .Rating}}">
                 {{if .PhotoURL}}<img src="{{.PhotoURL}}" alt="" class="property-card-thumb">{{end}}
                 <div class="property-card-info">
-                    <div class="property-card-rating">{{formatRating .Rating}}</div>
                     <div class="property-card-address">{{.Address}}</div>
                     <div class="property-card-price">{{formatPrice .Price}}</div>
                     <div class="property-card-details">{{formatFloat .Bedrooms}} bed · {{formatFloat .Bathrooms}} bath · {{formatInt .Sqft}} sqft</div>
+                    <div class="property-card-rating">{{formatRating .Rating}}</div>
                 </div>
             </a>
             {{end}}
