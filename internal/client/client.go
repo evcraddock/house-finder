@@ -210,3 +210,28 @@ func (c *Client) do(req *http.Request, result interface{}) error {
 
 	return nil
 }
+
+// EmailRequest specifies which properties to email.
+type EmailRequest struct {
+	PropertyIDs []int64 `json:"property_ids,omitempty"`
+	MinRating   *int    `json:"min_rating,omitempty"`
+	Visited     *bool   `json:"visited,omitempty"`
+	DryRun      bool    `json:"dry_run"`
+}
+
+// EmailResponse is the response from POST /api/email.
+type EmailResponse struct {
+	Sent    bool     `json:"sent"`
+	To      []string `json:"to"`
+	Subject string   `json:"subject"`
+	Body    string   `json:"body"`
+}
+
+// SendEmail sends an email to realtors with the selected properties.
+func (c *Client) SendEmail(req EmailRequest) (*EmailResponse, error) {
+	var resp EmailResponse
+	if err := c.post("/api/email", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}

@@ -40,6 +40,7 @@ func NewRootCmd() *cobra.Command {
 		newVisitCmd(),
 		newVisitsCmd(),
 		newRemoveCmd(),
+		newEmailCmd(),
 		newServeCmd(),
 		newLoginCmd(),
 		newLogoutCmd(),
