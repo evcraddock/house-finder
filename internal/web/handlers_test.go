@@ -24,8 +24,24 @@ func TestHandleListEmpty(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
 	}
-	if !strings.Contains(w.Body.String(), "No properties yet") {
+	if !strings.Contains(w.Body.String(), "No properties in this tab") {
 		t.Error("expected empty state message")
+	}
+}
+
+func TestHandleListHasAddForm(t *testing.T) {
+	srv := testServer(t)
+
+	r := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, r)
+
+	body := w.Body.String()
+	if !strings.Contains(body, "add-property-form") {
+		t.Error("expected add property form")
+	}
+	if !strings.Contains(body, "Enter address or MLS ID") {
+		t.Error("expected address input placeholder")
 	}
 }
 
