@@ -3,6 +3,7 @@ package email
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"net/smtp"
 	"strings"
@@ -83,6 +84,7 @@ func FormatEmail(props []PropertyWithComments, baseURL string) string {
 }
 
 // Send sends an email via SMTP.
+// Supports both port 465 (implicit TLS) and port 587 (STARTTLS).
 func Send(cfg SMTPConfig, to []string, subject, body string) error {
 	if !cfg.IsConfigured() {
 		return fmt.Errorf("SMTP not configured")
@@ -97,6 +99,62 @@ func Send(cfg SMTPConfig, to []string, subject, body string) error {
 
 	addr := cfg.Host + ":" + cfg.Port
 
+	if cfg.Port == "465" {
+		return sendImplicitTLS(cfg, addr, to, msg)
+	}
+	return sendSTARTTLS(cfg, addr, to, msg)
+}
+
+// sendImplicitTLS connects over TLS directly (port 465/SMTPS).
+func sendImplicitTLS(cfg SMTPConfig, addr string, to []string, msg string) error {
+	tlsCfg := &tls.Config{ServerName: cfg.Host}
+	conn, err := tls.Dial("tcp", addr, tlsCfg)
+	if err != nil {
+		return fmt.Errorf("TLS dial: %w", err)
+	}
+
+	c, err := smtp.NewClient(conn, cfg.Host)
+	if err != nil {
+		return fmt.Errorf("creating SMTP client: %w", err)
+	}
+	defer func() {
+		if quitErr := c.Quit(); quitErr != nil {
+			err = fmt.Errorf("quit: %w", quitErr)
+		}
+	}()
+
+	if cfg.User != "" {
+		auth := smtp.PlainAuth("", cfg.User, cfg.Pass, cfg.Host)
+		if err := c.Auth(auth); err != nil {
+			return fmt.Errorf("auth: %w", err)
+		}
+	}
+
+	if err := c.Mail(cfg.From); err != nil {
+		return fmt.Errorf("mail from: %w", err)
+	}
+	for _, rcpt := range to {
+		if err := c.Rcpt(rcpt); err != nil {
+			return fmt.Errorf("rcpt to %s: %w", rcpt, err)
+		}
+	}
+
+	w, err := c.Data()
+	if err != nil {
+		return fmt.Errorf("data: %w", err)
+	}
+	if _, err := w.Write([]byte(msg)); err != nil {
+		return fmt.Errorf("write: %w", err)
+	}
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("close data: %w", err)
+	}
+
+	return nil
+}
+
+// sendSTARTTLS connects plain then upgrades to TLS (port 587).
+func sendSTARTTLS(cfg SMTPConfig, addr string, to []string, msg string) error {
 	var auth smtp.Auth
 	if cfg.User != "" {
 		auth = smtp.PlainAuth("", cfg.User, cfg.Pass, cfg.Host)
