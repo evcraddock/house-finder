@@ -4,13 +4,29 @@
 
 A tool to find and track houses for sale. Add properties by address, rate them, leave comments, and browse via CLI or web UI.
 
-## Prerequisites
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/evcraddock/house-finder/main/install.sh | sh
+```
+
+Or specify a version and install directory:
+
+```bash
+VERSION=v0.1.1 INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/evcraddock/house-finder/main/install.sh | sh
+```
+
+Pre-built binaries are available for Linux (amd64, arm64) and macOS (amd64, arm64).
+
+## Development
+
+### Prerequisites
 
 - Go 1.21+
 - golangci-lint
 - A [RapidAPI](https://rapidapi.com/) key for the us-real-estate-listings API
 
-## Setup
+### Setup
 
 ```bash
 go mod download
@@ -18,7 +34,7 @@ cp .env.example .env
 # Edit .env and add your RAPIDAPI_KEY, HF_ADMIN_EMAIL, etc.
 ```
 
-## Build
+### Build
 
 ```bash
 make build
