@@ -93,7 +93,7 @@
                 return;
             }
 
-            let html = '<table class="passkey-table">';
+            let html = '<div class="table-scroll"><table class="passkey-table">';
             html += '<thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Realtor</th><th></th></tr></thead><tbody>';
             for (const u of users) {
                 html += '<tr>';
@@ -107,7 +107,7 @@
                 html += '</td>';
                 html += '</tr>';
             }
-            html += '</tbody></table>';
+            html += '</tbody></table></div>';
             container.innerHTML = html;
         } catch (err) {
             container.innerHTML = '<p class="passkey-error">Failed to load users.</p>';

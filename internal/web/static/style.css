@@ -326,3 +326,76 @@ tr.rating-1 { background-color: rgba(239, 68, 68, 0.25); }
 .thumb-cell { width: 60px; padding: 4px !important; }
 .hero-photo { margin-bottom: 1rem; border-radius: 8px; overflow: hidden; }
 .hero-photo img { width: 100%; max-height: 400px; object-fit: cover; display: block; }
+
+/* Scrollable table wrapper (admin/settings) */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Mobile cards hidden on desktop */
+.property-cards { display: none; }
+
+/* ===== Mobile (iPhone) ===== */
+@media (max-width: 600px) {
+    body { padding: 0.5rem; }
+
+    /* Header: stack vertically */
+    header { flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 0; margin-bottom: 1rem; }
+    header h1 { font-size: 1.25rem; width: 100%; }
+    .header-nav { gap: 0.75rem; }
+    .nav-link { font-size: 0.95rem; min-height: 44px; display: inline-flex; align-items: center; }
+    .theme-toggle { min-width: 44px; min-height: 44px; }
+
+    /* Tabs: tappable */
+    .tab { padding: 0.75rem 1rem; min-height: 44px; font-size: 0.9rem; }
+
+    /* Add form */
+    .add-property-form { margin-bottom: 1rem; }
+    .add-property-form input[type="text"] { min-width: 0; width: 100%; flex: 1 1 100%; }
+    .add-property-form button { min-height: 44px; flex: 1 1 100%; }
+
+    /* Property list: card layout instead of table */
+    .property-table { display: none; }
+    .property-cards { display: flex; flex-direction: column; gap: 0.75rem; }
+    .property-card {
+        display: flex; gap: 0.75rem; padding: 0.75rem;
+        background: #fff; border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        text-decoration: none; color: inherit;
+    }
+    .property-card-thumb { width: 80px; height: 60px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+    .property-card-info { flex: 1; min-width: 0; }
+    .property-card-address { font-weight: 600; font-size: 0.9rem; color: #2563eb; margin-bottom: 0.25rem; }
+    .property-card-details { font-size: 0.85rem; color: #6b7280; }
+    .property-card-rating { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .property-card-price { font-weight: 600; font-size: 0.95rem; color: #333; }
+
+    /* Card rating colors */
+    .property-card.rating-4 { border-left: 4px solid rgba(34, 197, 94, 0.7); }
+    .property-card.rating-3 { border-left: 4px solid rgba(59, 130, 246, 0.7); }
+    .property-card.rating-2 { border-left: 4px solid rgba(250, 204, 21, 0.8); }
+    .property-card.rating-1 { border-left: 4px solid rgba(239, 68, 68, 0.7); }
+
+    /* Detail page */
+    .card { padding: 1rem; }
+    .detail-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+    .rating-btn { width: 3rem; height: 3rem; font-size: 1.1rem; }
+    .visit-status-row { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    .visit-status-actions { width: 100%; }
+    .visit-status-actions .btn, .visit-status-actions .btn-secondary { min-height: 44px; flex: 1; }
+    .form-row { flex-direction: column; }
+    .form-row .login-input { width: 100%; min-width: 0; }
+    .comment-form textarea { min-height: 60px; }
+
+    /* Buttons: min touch target */
+    .btn, .btn-secondary, .btn-danger, .btn-sm { min-height: 44px; padding: 0.6rem 1rem; }
+    .login-btn { min-height: 44px; }
+
+    /* Admin users / settings tables */
+    .table-scroll table { min-width: 500px; }
+    .action-buttons { display: flex; gap: 0.25rem; }
+
+    /* Dark mode mobile cards */
+    [data-theme="dark"] .property-card { background: #1f2937; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    [data-theme="dark"] .property-card-address { color: #60a5fa; }
+    [data-theme="dark"] .property-card-price { color: #e5e7eb; }
+    [data-theme="dark"] .property-card-details { color: #9ca3af; }
+}
