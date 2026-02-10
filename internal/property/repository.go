@@ -85,7 +85,7 @@ func (r *Repository) List(opts ListOptions) ([]*Property, error) {
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	query += " ORDER BY created_at DESC"
+	query += " ORDER BY COALESCE(rating, 0) DESC, created_at DESC"
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {

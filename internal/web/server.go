@@ -59,6 +59,7 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 		"formatRating": tmplFormatRating,
 		"derefRating":  tmplDerefRating,
 		"seq":          tmplSeq,
+		"ratingClass":  tmplRatingClass,
 	}
 
 	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/*.html")
@@ -307,6 +308,23 @@ func tmplSeq(start, end int) []int {
 		s = append(s, i)
 	}
 	return s
+}
+
+func tmplRatingClass(r *int64) string {
+	if r == nil {
+		return ""
+	}
+	switch *r {
+	case 4:
+		return "rating-4"
+	case 3:
+		return "rating-3"
+	case 2:
+		return "rating-2"
+	case 1:
+		return "rating-1"
+	}
+	return ""
 }
 
 func formatWithCommas(n int64) string {
