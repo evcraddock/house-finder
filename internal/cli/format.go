@@ -51,6 +51,9 @@ func printPropertySummary(p *property.Property) {
 	if p.Rating != nil {
 		fmt.Printf("  Rating:   %s\n", formatRating(*p.Rating))
 	}
+	if p.VisitStatus != "" {
+		fmt.Printf("  Visit:    %s\n", p.VisitStatus)
+	}
 }
 
 // printPropertyTable prints a list of properties as a formatted table.

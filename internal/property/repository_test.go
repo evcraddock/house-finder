@@ -183,71 +183,108 @@ func TestListFilterByRating(t *testing.T) {
 	}
 }
 
-func TestListFilterByVisited(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "test.db")
-	d, err := db.Open(path)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() {
-		if cerr := d.Close(); cerr != nil {
-			t.Errorf("close db: %v", cerr)
-		}
-	})
+func TestListFilterByVisitStatus(t *testing.T) {
+	repo := testRepo(t)
 
-	repo := NewRepository(d)
-
-	// Insert 3 properties
-	var ids []int64
-	for i := 0; i < 3; i++ {
+	// Insert 3 properties with different visit statuses
+	statuses := []VisitStatus{VisitStatusNotVisited, VisitStatusWantToVisit, VisitStatusVisited}
+	for i, vs := range statuses {
 		p := &Property{
-			Address:    fmt.Sprintf("%d Visit St", i),
-			MprID:      fmt.Sprintf("M-VISIT-%d", i),
-			RealtorURL: fmt.Sprintf("/detail/visit-%d", i),
+			Address:    fmt.Sprintf("%d Status St", i),
+			MprID:      fmt.Sprintf("M-STATUS-%d", i),
+			RealtorURL: fmt.Sprintf("/detail/status-%d", i),
 			RawJSON:    json.RawMessage(`{}`),
 		}
 		saved, insertErr := repo.Insert(p)
 		if insertErr != nil {
 			t.Fatalf("insert %d: %v", i, insertErr)
 		}
-		ids = append(ids, saved.ID)
+		if err := repo.UpdateVisitStatus(saved.ID, vs); err != nil {
+			t.Fatalf("set status %d: %v", i, err)
+		}
 	}
 
-	// Add a visit to the first property only
-	if _, err := d.Exec(
-		"INSERT INTO visits (property_id, visit_date, visit_type) VALUES (?, ?, ?)",
-		ids[0], "2026-02-08", "showing",
-	); err != nil {
-		t.Fatalf("insert visit: %v", err)
+	tests := []struct {
+		name   string
+		status VisitStatus
+		want   int
+	}{
+		{"all", "", 3},
+		{"not_visited", VisitStatusNotVisited, 1},
+		{"want_to_visit", VisitStatusWantToVisit, 1},
+		{"visited", VisitStatusVisited, 1},
 	}
 
-	// All properties
-	all, err := repo.List(ListOptions{})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			props, listErr := repo.List(ListOptions{VisitStatus: tt.status})
+			if listErr != nil {
+				t.Fatalf("list: %v", listErr)
+			}
+			if len(props) != tt.want {
+				t.Errorf("got %d, want %d", len(props), tt.want)
+			}
+		})
+	}
+}
+
+func TestUpdateVisitStatus(t *testing.T) {
+	repo := testRepo(t)
+
+	p := &Property{
+		Address:    "123 Status St",
+		MprID:      "M-VS-1",
+		RealtorURL: "/detail/vs-1",
+		RawJSON:    json.RawMessage(`{}`),
+	}
+	saved, err := repo.Insert(p)
 	if err != nil {
-		t.Fatalf("list all: %v", err)
-	}
-	if len(all) != 3 {
-		t.Errorf("all: got %d, want 3", len(all))
+		t.Fatalf("insert: %v", err)
 	}
 
-	// Visited only
-	visitedTrue := true
-	visited, err := repo.List(ListOptions{Visited: &visitedTrue})
-	if err != nil {
-		t.Fatalf("list visited: %v", err)
-	}
-	if len(visited) != 1 {
-		t.Errorf("visited: got %d, want 1", len(visited))
+	if saved.VisitStatus != VisitStatusNotVisited {
+		t.Errorf("initial status = %q, want %q", saved.VisitStatus, VisitStatusNotVisited)
 	}
 
-	// Not visited only
-	visitedFalse := false
-	notVisited, err := repo.List(ListOptions{Visited: &visitedFalse})
-	if err != nil {
-		t.Fatalf("list not visited: %v", err)
+	// Advance to want_to_visit
+	if err := repo.UpdateVisitStatus(saved.ID, VisitStatusWantToVisit); err != nil {
+		t.Fatalf("set want_to_visit: %v", err)
 	}
-	if len(notVisited) != 2 {
-		t.Errorf("not visited: got %d, want 2", len(notVisited))
+	got, err := repo.GetByID(saved.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.VisitStatus != VisitStatusWantToVisit {
+		t.Errorf("status = %q, want %q", got.VisitStatus, VisitStatusWantToVisit)
+	}
+
+	// Advance to visited
+	if err := repo.UpdateVisitStatus(saved.ID, VisitStatusVisited); err != nil {
+		t.Fatalf("set visited: %v", err)
+	}
+	got, err = repo.GetByID(saved.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.VisitStatus != VisitStatusVisited {
+		t.Errorf("status = %q, want %q", got.VisitStatus, VisitStatusVisited)
+	}
+
+	// Back to not_visited
+	if err := repo.UpdateVisitStatus(saved.ID, VisitStatusNotVisited); err != nil {
+		t.Fatalf("set not_visited: %v", err)
+	}
+	got, err = repo.GetByID(saved.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.VisitStatus != VisitStatusNotVisited {
+		t.Errorf("status = %q, want %q", got.VisitStatus, VisitStatusNotVisited)
+	}
+
+	// Invalid status
+	if err := repo.UpdateVisitStatus(saved.ID, "garbage"); err == nil {
+		t.Error("expected error for invalid status")
 	}
 }
 

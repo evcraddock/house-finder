@@ -68,6 +68,23 @@
 
         {{template "rating-partial" .}}
 
+        <div class="card" id="visit-status-card">
+            <div class="visit-status-row">
+                <span class="visit-status-label">Status: <strong id="visit-status-text">{{if eq .Property.VisitStatus "not_visited"}}Not Visited{{else if eq .Property.VisitStatus "want_to_visit"}}Want to Visit{{else}}Visited{{end}}</strong></span>
+                <div class="visit-status-actions">
+                    {{if eq .Property.VisitStatus "not_visited"}}
+                    <button class="btn" id="status-advance-btn" onclick="setVisitStatus({{.Property.ID}}, 'want_to_visit')">Want to Visit</button>
+                    {{else if eq .Property.VisitStatus "want_to_visit"}}
+                    <button class="btn" id="status-advance-btn" onclick="setVisitStatus({{.Property.ID}}, 'visited')">Mark Visited</button>
+                    <button class="btn btn-secondary" onclick="setVisitStatus({{.Property.ID}}, 'not_visited')">← Back</button>
+                    {{else}}
+                    <button class="btn btn-secondary" onclick="setVisitStatus({{.Property.ID}}, 'want_to_visit')">← Want to Visit</button>
+                    <button class="btn btn-secondary" onclick="setVisitStatus({{.Property.ID}}, 'not_visited')">← Not Visited</button>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+
         <div class="card" id="visits-section">
             <h2>Visits</h2>
             <div id="visits-list"></div>
@@ -105,6 +122,21 @@
         var d = document.createElement('div');
         d.textContent = s;
         return d.innerHTML;
+    }
+
+    async function setVisitStatus(propID, status) {
+        try {
+            var resp = await fetch('/api/properties/' + propID + '/status', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({visit_status: status})
+            });
+            if (!resp.ok) throw new Error('Failed to update');
+            // Reload page to update button state
+            window.location.reload();
+        } catch (e) {
+            alert('Failed to update status: ' + e.message);
+        }
     }
 
     var visitTypeLabels = {showing: 'Showing', drive_by: 'Drive-by', open_house: 'Open House'};
@@ -155,7 +187,8 @@
             statusEl.className = 'passkey-status passkey-success';
             notesInput.value = '';
             loadVisits(propID);
-            setTimeout(function() { statusEl.textContent = ''; }, 2000);
+            // Reload to update visit status button (auto-set to visited)
+            setTimeout(function() { window.location.reload(); }, 1000);
         } catch (err) {
             statusEl.textContent = '✗ ' + err.message;
             statusEl.className = 'passkey-status passkey-error';

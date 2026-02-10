@@ -79,6 +79,9 @@ tr:hover { background: #f3f4f6; }
 }
 
 .rating-form { display: flex; gap: 0.5rem; align-items: center; }
+.visit-status-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.visit-status-label { font-size: 1rem; }
+.visit-status-actions { display: flex; gap: 0.5rem; }
 
 .rating-btn {
     width: 2.5rem;

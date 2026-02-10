@@ -323,48 +323,121 @@ func TestAPIListPropertiesWithMinRating(t *testing.T) {
 	}
 }
 
-func TestAPIListPropertiesWithVisited(t *testing.T) {
+func TestAPIListPropertiesWithVisitStatus(t *testing.T) {
 	srv, d, token := testAPIServerWithDB(t)
 
 	// Insert two properties
 	id1 := insertAPITestProperty(t, d)
 	insertAPITestProperty(t, d)
 
-	// Add a visit to the first
+	// Set first to want_to_visit
 	if _, err := d.Exec(
-		"INSERT INTO visits (property_id, visit_date, visit_type) VALUES (?, ?, ?)",
-		id1, "2026-02-08", "showing",
+		"UPDATE properties SET visit_status = 'want_to_visit' WHERE id = ?", id1,
 	); err != nil {
-		t.Fatalf("insert visit: %v", err)
+		t.Fatalf("update visit_status: %v", err)
 	}
 
-	// visited=true → 1
-	w := apiRequest(t, srv, "GET", "/api/properties?visited=true", token, nil)
+	// visit_status=want_to_visit → 1
+	w := apiRequest(t, srv, "GET", "/api/properties?visit_status=want_to_visit", token, nil)
 	if w.Code != http.StatusOK {
-		t.Fatalf("visited=true status = %d", w.Code)
+		t.Fatalf("want_to_visit status = %d", w.Code)
 	}
-	var visited []*property.Property
-	if err := json.NewDecoder(w.Body).Decode(&visited); err != nil {
+	var wantToVisit []*property.Property
+	if err := json.NewDecoder(w.Body).Decode(&wantToVisit); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(visited) != 1 {
-		t.Errorf("visited=true: got %d, want 1", len(visited))
+	if len(wantToVisit) != 1 {
+		t.Errorf("want_to_visit: got %d, want 1", len(wantToVisit))
 	}
 
-	// visited=false → 1
-	w2 := apiRequest(t, srv, "GET", "/api/properties?visited=false", token, nil)
+	// visit_status=not_visited → 1
+	w2 := apiRequest(t, srv, "GET", "/api/properties?visit_status=not_visited", token, nil)
 	var notVisited []*property.Property
 	if err := json.NewDecoder(w2.Body).Decode(&notVisited); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if len(notVisited) != 1 {
-		t.Errorf("visited=false: got %d, want 1", len(notVisited))
+		t.Errorf("not_visited: got %d, want 1", len(notVisited))
 	}
 
-	// visited=invalid → 400
-	w3 := apiRequest(t, srv, "GET", "/api/properties?visited=invalid", token, nil)
+	// visit_status=invalid → 400
+	w3 := apiRequest(t, srv, "GET", "/api/properties?visit_status=invalid", token, nil)
 	if w3.Code != http.StatusBadRequest {
-		t.Errorf("visited=invalid status = %d, want %d", w3.Code, http.StatusBadRequest)
+		t.Errorf("invalid status = %d, want %d", w3.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAPIAddVisitSetsVisited(t *testing.T) {
+	srv, d, token := testAPIServerWithDB(t)
+	id := insertAPITestProperty(t, d)
+
+	// Confirm starts as not_visited
+	w := apiRequest(t, srv, "GET", fmt.Sprintf("/api/properties/%d", id), token, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("get status = %d", w.Code)
+	}
+	var resp struct {
+		Property *property.Property `json:"property"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Property.VisitStatus != property.VisitStatusNotVisited {
+		t.Fatalf("initial visit_status = %q, want not_visited", resp.Property.VisitStatus)
+	}
+
+	// Add a visit
+	body := map[string]interface{}{
+		"visit_date": "2026-03-01",
+		"visit_type": "showing",
+		"notes":      "test visit",
+	}
+	w2 := apiRequest(t, srv, "POST", fmt.Sprintf("/api/properties/%d/visits", id), token, body)
+	if w2.Code != http.StatusCreated {
+		t.Fatalf("add visit status = %d; body: %s", w2.Code, w2.Body.String())
+	}
+
+	// Confirm now visited
+	w3 := apiRequest(t, srv, "GET", fmt.Sprintf("/api/properties/%d", id), token, nil)
+	var resp2 struct {
+		Property *property.Property `json:"property"`
+	}
+	if err := json.NewDecoder(w3.Body).Decode(&resp2); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp2.Property.VisitStatus != property.VisitStatusVisited {
+		t.Errorf("visit_status after add = %q, want visited", resp2.Property.VisitStatus)
+	}
+}
+
+func TestAPISetVisitStatus(t *testing.T) {
+	srv, d, token := testAPIServerWithDB(t)
+	id := insertAPITestProperty(t, d)
+
+	// Set to want_to_visit
+	body := map[string]interface{}{"visit_status": "want_to_visit"}
+	w := apiRequest(t, srv, "POST", fmt.Sprintf("/api/properties/%d/status", id), token, body)
+	if w.Code != http.StatusOK {
+		t.Fatalf("set status = %d; body: %s", w.Code, w.Body.String())
+	}
+
+	// Verify
+	w2 := apiRequest(t, srv, "GET", fmt.Sprintf("/api/properties/%d", id), token, nil)
+	var resp struct {
+		Property *property.Property `json:"property"`
+	}
+	if err := json.NewDecoder(w2.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Property.VisitStatus != property.VisitStatusWantToVisit {
+		t.Errorf("visit_status = %q, want want_to_visit", resp.Property.VisitStatus)
+	}
+
+	// Invalid status → 400
+	badBody := map[string]interface{}{"visit_status": "garbage"}
+	w3 := apiRequest(t, srv, "POST", fmt.Sprintf("/api/properties/%d/status", id), token, badBody)
+	if w3.Code != http.StatusBadRequest {
+		t.Errorf("invalid status = %d, want 400", w3.Code)
 	}
 }
 

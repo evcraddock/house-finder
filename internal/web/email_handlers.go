@@ -12,7 +12,7 @@ import (
 type emailRequest struct {
 	PropertyIDs []int64 `json:"property_ids"` // specific IDs (optional)
 	MinRating   *int    `json:"min_rating"`   // filter by min rating (optional)
-	Visited     *bool   `json:"visited"`      // filter by visit status (optional)
+	VisitStatus string  `json:"visit_status"` // filter by visit status (optional)
 	DryRun      bool    `json:"dry_run"`      // preview only, don't send
 }
 
@@ -59,7 +59,7 @@ func (s *Server) handleAPIEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Gather properties — default to not-visited only
+	// Gather properties — default to want_to_visit
 	var props []*property.Property
 	if len(req.PropertyIDs) > 0 {
 		for _, id := range req.PropertyIDs {
@@ -73,12 +73,18 @@ func (s *Server) handleAPIEmail(w http.ResponseWriter, r *http.Request) {
 	} else {
 		opts := property.ListOptions{
 			MinRating: req.MinRating,
-			Visited:   req.Visited,
 		}
-		// Default to not-visited if no visit filter specified
-		if opts.Visited == nil {
-			notVisited := false
-			opts.Visited = &notVisited
+		if req.VisitStatus == "all" {
+			// No filter — include all statuses
+		} else if req.VisitStatus != "" {
+			if !property.ValidVisitStatus(req.VisitStatus) {
+				apiError(w, "visit_status must be not_visited, want_to_visit, visited, or all", http.StatusBadRequest)
+				return
+			}
+			opts.VisitStatus = property.VisitStatus(req.VisitStatus)
+		} else {
+			// Default to want_to_visit
+			opts.VisitStatus = property.VisitStatusWantToVisit
 		}
 		listed, listErr := s.propRepo.List(opts)
 		if listErr != nil {
