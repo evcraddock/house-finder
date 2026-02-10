@@ -10,9 +10,11 @@ import (
 )
 
 type listData struct {
-	Properties []*property.Property
-	LastVisits map[int64]string // property_id -> visit type label
-	IsAdmin    bool
+	Properties    []*property.Property
+	IsAdmin       bool
+	Tab           string // "not-visited" or "visited"
+	NotVisitedCnt int
+	VisitedCnt    int
 }
 
 type detailData struct {
@@ -29,26 +31,41 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	props, err := s.propRepo.List(property.ListOptions{})
+	tab := r.URL.Query().Get("tab")
+	if tab != "visited" {
+		tab = "not-visited"
+	}
+
+	// Get counts for both tabs
+	visitedTrue := true
+	visitedFalse := false
+	notVisitedProps, err := s.propRepo.List(property.ListOptions{Visited: &visitedFalse})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error loading properties: %v", err), http.StatusInternalServerError)
+		return
+	}
+	visitedProps, err := s.propRepo.List(property.ListOptions{Visited: &visitedTrue})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error loading properties: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	lastVisitMap, err := s.visitRepo.LastVisitByProperty()
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error loading visits: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	lastVisits := make(map[int64]string)
-	for propID, v := range lastVisitMap {
-		lastVisits[propID] = v.VisitType.Label()
+	var props []*property.Property
+	if tab == "visited" {
+		props = visitedProps
+	} else {
+		props = notVisitedProps
 	}
 
 	email, sessionErr := s.sessions.Validate(r)
 	isAdmin := sessionErr == nil && s.users.IsAdmin(email)
-	s.render(w, "list.html", listData{Properties: props, LastVisits: lastVisits, IsAdmin: isAdmin})
+	s.render(w, "list.html", listData{
+		Properties:    props,
+		IsAdmin:       isAdmin,
+		Tab:           tab,
+		NotVisitedCnt: len(notVisitedProps),
+		VisitedCnt:    len(visitedProps),
+	})
 }
 
 // handleDetail renders the property detail page.

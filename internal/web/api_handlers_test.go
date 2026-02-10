@@ -323,6 +323,51 @@ func TestAPIListPropertiesWithMinRating(t *testing.T) {
 	}
 }
 
+func TestAPIListPropertiesWithVisited(t *testing.T) {
+	srv, d, token := testAPIServerWithDB(t)
+
+	// Insert two properties
+	id1 := insertAPITestProperty(t, d)
+	insertAPITestProperty(t, d)
+
+	// Add a visit to the first
+	if _, err := d.Exec(
+		"INSERT INTO visits (property_id, visit_date, visit_type) VALUES (?, ?, ?)",
+		id1, "2026-02-08", "showing",
+	); err != nil {
+		t.Fatalf("insert visit: %v", err)
+	}
+
+	// visited=true → 1
+	w := apiRequest(t, srv, "GET", "/api/properties?visited=true", token, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("visited=true status = %d", w.Code)
+	}
+	var visited []*property.Property
+	if err := json.NewDecoder(w.Body).Decode(&visited); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(visited) != 1 {
+		t.Errorf("visited=true: got %d, want 1", len(visited))
+	}
+
+	// visited=false → 1
+	w2 := apiRequest(t, srv, "GET", "/api/properties?visited=false", token, nil)
+	var notVisited []*property.Property
+	if err := json.NewDecoder(w2.Body).Decode(&notVisited); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(notVisited) != 1 {
+		t.Errorf("visited=false: got %d, want 1", len(notVisited))
+	}
+
+	// visited=invalid → 400
+	w3 := apiRequest(t, srv, "GET", "/api/properties?visited=invalid", token, nil)
+	if w3.Code != http.StatusBadRequest {
+		t.Errorf("visited=invalid status = %d, want %d", w3.Code, http.StatusBadRequest)
+	}
+}
+
 func TestAPIMethodNotAllowed(t *testing.T) {
 	srv, _, token := testAPIServerWithDB(t)
 

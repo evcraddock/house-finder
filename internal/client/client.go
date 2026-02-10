@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evcraddock/house-finder/internal/comment"
@@ -37,11 +38,24 @@ type ShowResponse struct {
 	Visits   []*visit.Visit     `json:"visits"`
 }
 
-// ListProperties returns all properties, optionally filtered by min rating.
-func (c *Client) ListProperties(minRating int) ([]*property.Property, error) {
+// ListOptions controls filtering for ListProperties.
+type ListOptions struct {
+	MinRating int
+	Visited   *bool // nil = all, true = visited, false = not visited
+}
+
+// ListProperties returns all properties, optionally filtered.
+func (c *Client) ListProperties(opts ListOptions) ([]*property.Property, error) {
 	path := "/api/properties"
-	if minRating > 0 {
-		path = fmt.Sprintf("/api/properties?min_rating=%d", minRating)
+	var params []string
+	if opts.MinRating > 0 {
+		params = append(params, fmt.Sprintf("min_rating=%d", opts.MinRating))
+	}
+	if opts.Visited != nil {
+		params = append(params, fmt.Sprintf("visited=%v", *opts.Visited))
+	}
+	if len(params) > 0 {
+		path += "?" + strings.Join(params, "&")
 	}
 
 	var props []*property.Property
