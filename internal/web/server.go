@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +19,7 @@ import (
 	"github.com/evcraddock/house-finder/internal/auth"
 	"github.com/evcraddock/house-finder/internal/comment"
 	"github.com/evcraddock/house-finder/internal/email"
+	"github.com/evcraddock/house-finder/internal/logging"
 	"github.com/evcraddock/house-finder/internal/mls"
 	"github.com/evcraddock/house-finder/internal/property"
 	"github.com/evcraddock/house-finder/internal/visit"
@@ -179,13 +181,14 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 	mux.HandleFunc("/admin/users", s.handleAdminUsers)
 
 	// Wrap everything with auth middleware if admin email is configured
+	var h http.Handler = mux
 	if authCfg.AdminEmail != "" {
 		// Web routes: session auth. API routes: bearer token or session for management.
-		webAuth := auth.RequireAuth(sessions, mux)
-		s.handler = auth.RequireAPIKey(apiKeys, sessions, webAuth)
-	} else {
-		s.handler = mux
+		webAuth := auth.RequireAuth(sessions, h)
+		h = auth.RequireAPIKey(apiKeys, sessions, webAuth)
 	}
+	// Request logging is the outermost middleware
+	s.handler = logging.RequestLogger(h)
 
 	return s, nil
 }
@@ -198,7 +201,14 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // ListenAndServe starts the HTTP server with graceful shutdown on SIGINT/SIGTERM.
 func (s *Server) ListenAndServe(port int) error {
 	addr := fmt.Sprintf(":%d", port)
-	fmt.Printf("Starting web UI on http://localhost%s\n", addr)
+
+	slog.Info("server starting",
+		"addr", fmt.Sprintf("http://localhost%s", addr),
+		"admin", s.authCfg.AdminEmail,
+		"smtp", s.smtpCfg.IsConfigured(),
+		"dev_mode", s.authCfg.DevMode,
+		"mls", s.propService != nil,
+	)
 
 	srv := &http.Server{Addr: addr, Handler: s}
 
@@ -214,7 +224,7 @@ func (s *Server) ListenAndServe(port int) error {
 	case err := <-errCh:
 		return err
 	case sig := <-quit:
-		fmt.Printf("\nReceived %s, shutting down...\n", sig)
+		slog.Info("shutting down", "signal", sig.String())
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 		return srv.Shutdown(ctx)

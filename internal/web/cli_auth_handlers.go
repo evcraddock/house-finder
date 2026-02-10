@@ -1,7 +1,7 @@
 package web
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -62,14 +62,14 @@ func (h *cliAuthHandlers) submitEmail(w http.ResponseWriter, r *http.Request) {
 	if h.users.IsAuthorized(email) {
 		token, err := h.tokens.Create(email)
 		if err != nil {
-			log.Printf("Error creating token: %v", err)
+			slog.Error("creating token", "err", err)
 			h.render(w, "cli_auth.html", cliAuthData{Message: successMsg, HasPasskeys: hp})
 			return
 		}
 
 		// Magic link redirects back to /cli/auth/complete after verification
 		if _, err := h.mailer.SendCLIMagicLink(email, token); err != nil {
-			log.Printf("Error sending magic link: %v", err)
+			slog.Error("sending magic link", "err", err)
 		}
 	}
 
@@ -94,7 +94,7 @@ func (h *cliAuthHandlers) handleCLIAuthVerify(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := h.sessions.Create(w, email); err != nil {
-		log.Printf("Error creating session: %v", err)
+		slog.Error("creating session", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -113,7 +113,7 @@ func (h *cliAuthHandlers) handleCLIAuthComplete(w http.ResponseWriter, r *http.R
 
 	rawKey, _, err := h.apiKeys.Create("CLI", email)
 	if err != nil {
-		log.Printf("Error creating API key: %v", err)
+		slog.Error("creating api key", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}

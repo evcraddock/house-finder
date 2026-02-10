@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/evcraddock/house-finder/internal/email"
 )
@@ -22,7 +23,7 @@ func (m *Mailer) SendMagicLink(addr, token string) (string, error) {
 	link := fmt.Sprintf("%s/auth/verify?token=%s", m.config.BaseURL, token)
 
 	if m.config.DevMode {
-		fmt.Printf("[DEV] Magic link for %s: %s\n", addr, link)
+		slog.Info("magic link generated", "email", addr, "link", link)
 		if !m.smtpConfigured() {
 			return link, nil
 		}
@@ -46,7 +47,7 @@ func (m *Mailer) SendCLIMagicLink(addr, token string) (string, error) {
 	link := fmt.Sprintf("%s/cli/auth/verify?token=%s", m.config.BaseURL, token)
 
 	if m.config.DevMode {
-		fmt.Printf("[DEV] CLI magic link for %s: %s\n", addr, link)
+		slog.Info("cli magic link generated", "email", addr, "link", link)
 		if !m.smtpConfigured() {
 			return link, nil
 		}

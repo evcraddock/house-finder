@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -73,7 +74,7 @@ func (s *APIKeyStore) List() ([]APIKey, error) {
 	}
 	defer func() {
 		if cerr := rows.Close(); cerr != nil {
-			fmt.Printf("closing rows: %v\n", cerr)
+			slog.Warn("closing rows", "err", cerr)
 		}
 	}()
 

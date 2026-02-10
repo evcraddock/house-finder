@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -40,6 +41,7 @@ func RequireAuth(sessions *SessionStore, next http.Handler) http.Handler {
 		}
 
 		if _, err := sessions.Validate(r); err != nil {
+			slog.Debug("auth redirect", "path", r.URL.Path, "reason", "no session")
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
@@ -127,21 +129,25 @@ func RequireAPIKey(apiKeys *APIKeyStore, sessions *SessionStore, next http.Handl
 
 		// Check rate limit before expensive validation
 		if apiKeyLimiter.isLimited(ip) {
+			slog.Warn("api key rate limited", "ip", ip)
 			http.Error(w, "Too many requests", http.StatusTooManyRequests)
 			return
 		}
 
 		email, err := apiKeys.Validate(key)
 		if err != nil {
+			slog.Error("api key validation error", "err", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
 		if email == "" {
+			slog.Warn("invalid api key", "ip", ip, "path", r.URL.Path)
 			apiKeyLimiter.recordFailure(ip)
 			http.Error(w, "Invalid API key", http.StatusUnauthorized)
 			return
 		}
 
+		slog.Debug("api key auth", "email", email, "path", r.URL.Path)
 		next.ServeHTTP(w, WithUserEmail(r, email))
 	})
 }

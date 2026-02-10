@@ -2,7 +2,7 @@ package web
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -56,7 +56,7 @@ func (h *apikeyHandlers) handleCreateKey(w http.ResponseWriter, r *http.Request)
 	}
 	rawKey, key, err := h.apiKeys.Create(name, email)
 	if err != nil {
-		log.Printf("Error creating API key: %v", err)
+		slog.Error("creating api key", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -74,7 +74,7 @@ func (h *apikeyHandlers) handleCreateKey(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Printf("Error encoding response: %v", err)
+		slog.Error("encoding response", "err", err)
 	}
 }
 
@@ -87,7 +87,7 @@ func (h *apikeyHandlers) handleListKeys(w http.ResponseWriter, r *http.Request) 
 
 	keys, err := h.apiKeys.List()
 	if err != nil {
-		log.Printf("Error listing API keys: %v", err)
+		slog.Error("listing api keys", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -108,7 +108,7 @@ func (h *apikeyHandlers) handleListKeys(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Printf("Error encoding response: %v", err)
+		slog.Error("encoding response", "err", err)
 	}
 }
 
@@ -128,7 +128,7 @@ func (h *apikeyHandlers) handleDeleteKey(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.apiKeys.Delete(id); err != nil {
-		log.Printf("Error deleting API key: %v", err)
+		slog.Error("deleting api key", "err", err)
 		http.Error(w, "Key not found", http.StatusNotFound)
 		return
 	}

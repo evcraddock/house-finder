@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 )
@@ -82,7 +83,7 @@ func (s *PasskeyStore) ListByEmail(email string) ([]StoredCredential, error) {
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			fmt.Printf("closing rows: %v\n", err)
+			slog.Warn("closing rows", "err", err)
 		}
 	}()
 

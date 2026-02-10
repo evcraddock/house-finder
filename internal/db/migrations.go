@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 )
 
 // migrations is an ordered list of SQL statements to run.
@@ -122,7 +123,7 @@ func addColumnIfNotExists(db *sql.DB, table, column, definition string) error {
 	}
 	defer func() {
 		if cerr := rows.Close(); cerr != nil {
-			fmt.Printf("warning: closing rows: %v\n", cerr)
+			slog.Warn("closing rows", "err", cerr)
 		}
 	}()
 
