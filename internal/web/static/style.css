@@ -353,7 +353,7 @@ tr.rating-1 { background-color: rgba(239, 68, 68, 0.25); }
     .add-property-form button { min-height: 44px; flex: 1 1 100%; }
 
     /* Property list: card layout instead of table */
-    table { display: none; }
+    .property-table { display: none; }
     .property-cards { display: flex; flex-direction: column; gap: 0.75rem; }
     .property-card {
         display: flex; gap: 0.75rem; padding: 0.75rem;
@@ -363,7 +363,7 @@ tr.rating-1 { background-color: rgba(239, 68, 68, 0.25); }
     }
     .property-card-thumb { width: 80px; height: 60px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
     .property-card-info { flex: 1; min-width: 0; }
-    .property-card-address { font-weight: 600; font-size: 0.9rem; color: #2563eb; margin-bottom: 0.25rem; overflow: hidden; text-overflow: ellipsis; }
+    .property-card-address { font-weight: 600; font-size: 0.9rem; color: #2563eb; margin-bottom: 0.25rem; }
     .property-card-details { font-size: 0.85rem; color: #6b7280; }
     .property-card-rating { font-size: 0.95rem; margin-bottom: 0.15rem; }
     .property-card-price { font-weight: 600; font-size: 0.95rem; color: #333; }
@@ -390,7 +390,7 @@ tr.rating-1 { background-color: rgba(239, 68, 68, 0.25); }
     .login-btn { min-height: 44px; }
 
     /* Admin users / settings tables */
-    .table-scroll table { display: table; min-width: 500px; }
+    .table-scroll table { min-width: 500px; }
     .action-buttons { display: flex; gap: 0.25rem; }
 
     /* Dark mode mobile cards */
