@@ -97,8 +97,9 @@ func (r *Repository) List(opts ListOptions) ([]*Property, error) {
 			// Has a visit with date >= today
 			conditions = append(conditions, "id IN (SELECT DISTINCT property_id FROM visits WHERE visit_date >= date('now'))")
 		case StatusVisited:
-			// Manually marked visited, OR has visits but none in the future
-			conditions = append(conditions, "(visited = 1 OR (id IN (SELECT DISTINCT property_id FROM visits) AND id NOT IN (SELECT DISTINCT property_id FROM visits WHERE visit_date >= date('now'))))")
+			// Manually marked visited OR has past visits, but NOT if they have a future visit (scheduled takes priority)
+			conditions = append(conditions, "(visited = 1 OR id IN (SELECT DISTINCT property_id FROM visits))")
+			conditions = append(conditions, "id NOT IN (SELECT DISTINCT property_id FROM visits WHERE visit_date >= date('now'))")
 		}
 	} else if opts.Visited != nil {
 		// Backward compat for API ?visited=true/false

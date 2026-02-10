@@ -265,9 +265,9 @@ func TestListFilterByStatus(t *testing.T) {
 
 	repo := NewRepository(d)
 
-	// Insert 4 properties
+	// Insert 5 properties
 	var ids []int64
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 5; i++ {
 		p := &Property{
 			Address:    fmt.Sprintf("%d Status St", i),
 			MprID:      fmt.Sprintf("M-STATUS-%d", i),
@@ -284,7 +284,8 @@ func TestListFilterByStatus(t *testing.T) {
 	// ids[0]: no visits (not-visited)
 	// ids[1]: past visit (visited)
 	// ids[2]: future visit (scheduled)
-	// ids[3]: manually marked visited
+	// ids[3]: manually marked visited (no visits, should be visited)
+	// Note: if ids[3] also had a future visit, scheduled takes priority
 
 	if _, err := d.Exec(
 		"INSERT INTO visits (property_id, visit_date, visit_type) VALUES (?, ?, ?)",
@@ -304,15 +305,26 @@ func TestListFilterByStatus(t *testing.T) {
 		t.Fatalf("mark visited: %v", err)
 	}
 
+	// ids[4]: manually marked visited + future visit (scheduled takes priority)
+	if err := repo.UpdateVisited(ids[4], true); err != nil {
+		t.Fatalf("mark visited: %v", err)
+	}
+	if _, err := d.Exec(
+		"INSERT INTO visits (property_id, visit_date, visit_type) VALUES (?, ?, ?)",
+		ids[4], "2099-06-01", "showing",
+	); err != nil {
+		t.Fatalf("insert future visit for overlap: %v", err)
+	}
+
 	tests := []struct {
 		name   string
 		status PropertyStatus
 		want   int
 	}{
 		{"not-visited", StatusNotVisited, 1}, // ids[0]
-		{"scheduled", StatusScheduled, 1},    // ids[2]
-		{"visited", StatusVisited, 2},        // ids[1] (past visit) + ids[3] (manual)
-		{"all", StatusAll, 4},
+		{"scheduled", StatusScheduled, 2},    // ids[2] + ids[4] (future visit takes priority)
+		{"visited", StatusVisited, 2},        // ids[1] (past visit) + ids[3] (manual, no future visit)
+		{"all", StatusAll, 5},
 	}
 
 	for _, tt := range tests {

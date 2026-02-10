@@ -77,7 +77,13 @@ func (s *Server) handleAPIEmail(w http.ResponseWriter, r *http.Request) {
 			Visited:   req.Visited,
 		}
 		if req.Status != "" {
-			opts.Status = property.PropertyStatus(req.Status)
+			switch property.PropertyStatus(req.Status) {
+			case property.StatusNotVisited, property.StatusScheduled, property.StatusVisited:
+				opts.Status = property.PropertyStatus(req.Status)
+			default:
+				apiError(w, "status must be not-visited, scheduled, or visited", http.StatusBadRequest)
+				return
+			}
 		}
 		// Default to scheduled if no filter specified
 		if opts.Visited == nil && opts.Status == "" {
