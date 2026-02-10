@@ -308,3 +308,15 @@ header { display: flex; justify-content: space-between; align-items: center; }
 [data-theme="dark"] .form-value { color: #9ca3af; }
 [data-theme="dark"] .btn-secondary { background: #4b5563; }
 [data-theme="dark"] .btn-secondary:hover { background: #374151; }
+
+/* Rating row colors — light theme */
+tr.rating-4 { background-color: rgba(34, 197, 94, 0.15); }
+tr.rating-3 { background-color: rgba(163, 230, 53, 0.15); }
+tr.rating-2 { background-color: rgba(250, 204, 21, 0.15); }
+tr.rating-1 { background-color: rgba(239, 68, 68, 0.15); }
+
+/* Rating row colors — dark theme */
+[data-theme="dark"] tr.rating-4 { background-color: rgba(34, 197, 94, 0.2); }
+[data-theme="dark"] tr.rating-3 { background-color: rgba(163, 230, 53, 0.15); }
+[data-theme="dark"] tr.rating-2 { background-color: rgba(250, 204, 21, 0.15); }
+[data-theme="dark"] tr.rating-1 { background-color: rgba(239, 68, 68, 0.2); }

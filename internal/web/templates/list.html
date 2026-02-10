@@ -24,7 +24,7 @@
     </header>
     <main>
         <div class="tabs">
-            <a href="/?tab=not_visited" class="tab{{if eq .Tab "not_visited"}} active{{end}}">Not Visited ({{.NotVisitedCnt}})</a>
+            <a href="/?tab=all" class="tab{{if eq .Tab "all"}} active{{end}}">All ({{.AllCnt}})</a>
             <a href="/?tab=want_to_visit" class="tab{{if eq .Tab "want_to_visit"}} active{{end}}">Want to Visit ({{.WantToVisitCnt}})</a>
             <a href="/?tab=visited" class="tab{{if eq .Tab "visited"}} active{{end}}">Visited ({{.VisitedCnt}})</a>
         </div>
@@ -48,7 +48,7 @@
             </thead>
             <tbody>
                 {{range .Properties}}
-                <tr>
+                <tr class="{{ratingClass .Rating}}">
                     <td class="rating">{{formatRating .Rating}}</td>
                     <td><a href="/property/{{.ID}}">{{.Address}}</a></td>
                     <td class="price">{{formatPrice .Price}}</td>
@@ -96,7 +96,7 @@
                 return;
             }
             input.value = '';
-            window.location.href = '/?tab=not_visited';
+            window.location.href = '/?tab=all';
         })
         .catch(function(err) {
             btn.disabled = false;

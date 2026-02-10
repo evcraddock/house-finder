@@ -12,8 +12,8 @@ import (
 type listData struct {
 	Properties     []*property.Property
 	IsAdmin        bool
-	Tab            string // "not_visited", "want_to_visit", or "visited"
-	NotVisitedCnt  int
+	Tab            string // "all", "want_to_visit", or "visited"
+	AllCnt         int
 	WantToVisitCnt int
 	VisitedCnt     int
 }
@@ -37,11 +37,11 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 	case "want_to_visit", "visited":
 		// valid
 	default:
-		tab = "not_visited"
+		tab = "all"
 	}
 
-	// Get counts for all three tabs
-	notVisitedProps, err := s.propRepo.List(property.ListOptions{VisitStatus: property.VisitStatusNotVisited})
+	// Get all properties and filtered lists
+	allProps, err := s.propRepo.List(property.ListOptions{})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error loading properties: %v", err), http.StatusInternalServerError)
 		return
@@ -64,7 +64,7 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 	case "visited":
 		props = visitedProps
 	default:
-		props = notVisitedProps
+		props = allProps
 	}
 
 	email, sessionErr := s.sessions.Validate(r)
@@ -73,7 +73,7 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 		Properties:     props,
 		IsAdmin:        isAdmin,
 		Tab:            tab,
-		NotVisitedCnt:  len(notVisitedProps),
+		AllCnt:         len(allProps),
 		WantToVisitCnt: len(wantToVisitProps),
 		VisitedCnt:     len(visitedProps),
 	})
