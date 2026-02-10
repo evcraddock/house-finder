@@ -101,7 +101,7 @@ func TestMigrations(t *testing.T) {
 		{
 			name:  "properties table exists",
 			table: "properties",
-			cols:  []string{"id", "address", "mpr_id", "realtor_url", "price", "bedrooms", "bathrooms", "sqft", "lot_size", "year_built", "property_type", "status", "rating", "raw_json", "created_at", "updated_at"},
+			cols:  []string{"id", "address", "mpr_id", "realtor_url", "price", "bedrooms", "bathrooms", "sqft", "lot_size", "year_built", "property_type", "status", "rating", "raw_json", "created_at", "updated_at", "visit_status"},
 		},
 		{
 			name:  "comments table exists",

@@ -10,11 +10,12 @@ import (
 )
 
 type listData struct {
-	Properties    []*property.Property
-	IsAdmin       bool
-	Tab           string // "not-visited" or "visited"
-	NotVisitedCnt int
-	VisitedCnt    int
+	Properties     []*property.Property
+	IsAdmin        bool
+	Tab            string // "not_visited", "want_to_visit", or "visited"
+	NotVisitedCnt  int
+	WantToVisitCnt int
+	VisitedCnt     int
 }
 
 type detailData struct {
@@ -32,39 +33,49 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tab := r.URL.Query().Get("tab")
-	if tab != "visited" {
-		tab = "not-visited"
+	switch tab {
+	case "want_to_visit", "visited":
+		// valid
+	default:
+		tab = "not_visited"
 	}
 
-	// Get counts for both tabs
-	visitedTrue := true
-	visitedFalse := false
-	notVisitedProps, err := s.propRepo.List(property.ListOptions{Visited: &visitedFalse})
+	// Get counts for all three tabs
+	notVisitedProps, err := s.propRepo.List(property.ListOptions{VisitStatus: property.VisitStatusNotVisited})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error loading properties: %v", err), http.StatusInternalServerError)
 		return
 	}
-	visitedProps, err := s.propRepo.List(property.ListOptions{Visited: &visitedTrue})
+	wantToVisitProps, err := s.propRepo.List(property.ListOptions{VisitStatus: property.VisitStatusWantToVisit})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error loading properties: %v", err), http.StatusInternalServerError)
+		return
+	}
+	visitedProps, err := s.propRepo.List(property.ListOptions{VisitStatus: property.VisitStatusVisited})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error loading properties: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	var props []*property.Property
-	if tab == "visited" {
+	switch tab {
+	case "want_to_visit":
+		props = wantToVisitProps
+	case "visited":
 		props = visitedProps
-	} else {
+	default:
 		props = notVisitedProps
 	}
 
 	email, sessionErr := s.sessions.Validate(r)
 	isAdmin := sessionErr == nil && s.users.IsAdmin(email)
 	s.render(w, "list.html", listData{
-		Properties:    props,
-		IsAdmin:       isAdmin,
-		Tab:           tab,
-		NotVisitedCnt: len(notVisitedProps),
-		VisitedCnt:    len(visitedProps),
+		Properties:     props,
+		IsAdmin:        isAdmin,
+		Tab:            tab,
+		NotVisitedCnt:  len(notVisitedProps),
+		WantToVisitCnt: len(wantToVisitProps),
+		VisitedCnt:     len(visitedProps),
 	})
 }
 

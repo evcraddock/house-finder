@@ -35,6 +35,18 @@ This applies even when:
 
 **The process exists because the human needs to review and approve changes before they ship.** Pushing directly to main takes that decision away from them. It's irreversible.
 
+## Stay on the Feature Branch
+
+**Never switch to main while a task is in progress.** If you checked out a feature branch to do work, stay on it until the PR is merged or closed. This includes:
+- While waiting for reviews
+- While waiting for CI
+- Between commits
+- After pushing
+
+The dev server runs from whatever branch is checked out. Switching to main silently reverts all your changes in the running app. The user will see nothing and think nothing was done.
+
+**The only time to switch to main is when starting a new task** after the previous branch has been merged or abandoned.
+
 ## Project Overview
 
 A tool to find and track houses for sale. Add properties by address (fetches data from RapidAPI), rate them 1-4, leave comments, and browse via CLI or web UI.

@@ -24,7 +24,8 @@
     </header>
     <main>
         <div class="tabs">
-            <a href="/?tab=not-visited" class="tab{{if eq .Tab "not-visited"}} active{{end}}">Not Visited ({{.NotVisitedCnt}})</a>
+            <a href="/?tab=not_visited" class="tab{{if eq .Tab "not_visited"}} active{{end}}">Not Visited ({{.NotVisitedCnt}})</a>
+            <a href="/?tab=want_to_visit" class="tab{{if eq .Tab "want_to_visit"}} active{{end}}">Want to Visit ({{.WantToVisitCnt}})</a>
             <a href="/?tab=visited" class="tab{{if eq .Tab "visited"}} active{{end}}">Visited ({{.VisitedCnt}})</a>
         </div>
         <form id="add-property-form" class="add-property-form" onsubmit="return addProperty(event)">
@@ -95,7 +96,7 @@
                 return;
             }
             input.value = '';
-            window.location.href = '/?tab=not-visited';
+            window.location.href = '/?tab=not_visited';
         })
         .catch(function(err) {
             btn.disabled = false;

@@ -87,6 +87,22 @@ func (s *Server) handleAPIProperties(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// /api/properties/{id}/status
+	if strings.HasSuffix(path, "/status") {
+		idStr := strings.TrimSuffix(path, "/status")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			apiError(w, "invalid property ID", http.StatusBadRequest)
+			return
+		}
+		if r.Method != http.MethodPost {
+			apiError(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		s.apiSetVisitStatus(w, r, id)
+		return
+	}
+
 	// /api/properties/{id}/rate
 	if strings.HasSuffix(path, "/rate") {
 		idStr := strings.TrimSuffix(path, "/rate")
@@ -130,18 +146,12 @@ func (s *Server) apiListProperties(w http.ResponseWriter, r *http.Request) {
 		}
 		opts.MinRating = &min
 	}
-	if visitedStr := r.URL.Query().Get("visited"); visitedStr != "" {
-		switch visitedStr {
-		case "true":
-			v := true
-			opts.Visited = &v
-		case "false":
-			v := false
-			opts.Visited = &v
-		default:
-			apiError(w, "visited must be true or false", http.StatusBadRequest)
+	if vs := r.URL.Query().Get("visit_status"); vs != "" {
+		if !property.ValidVisitStatus(vs) {
+			apiError(w, "visit_status must be not_visited, want_to_visit, or visited", http.StatusBadRequest)
 			return
 		}
+		opts.VisitStatus = property.VisitStatus(vs)
 	}
 
 	props, err := s.propRepo.List(opts)
@@ -241,6 +251,28 @@ func (s *Server) apiRateProperty(w http.ResponseWriter, r *http.Request, id int6
 	apiJSON(w, map[string]interface{}{"id": id, "rating": req.Rating}, http.StatusOK)
 }
 
+// apiSetVisitStatus sets the visit status on a property.
+func (s *Server) apiSetVisitStatus(w http.ResponseWriter, r *http.Request, id int64) {
+	var req struct {
+		VisitStatus string `json:"visit_status"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apiError(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+	if !property.ValidVisitStatus(req.VisitStatus) {
+		apiError(w, "visit_status must be not_visited, want_to_visit, or visited", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.propRepo.UpdateVisitStatus(id, property.VisitStatus(req.VisitStatus)); err != nil {
+		apiError(w, fmt.Sprintf("updating visit status: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	apiJSON(w, map[string]interface{}{"id": id, "visit_status": req.VisitStatus}, http.StatusOK)
+}
+
 // apiListComments returns comments for a property.
 func (s *Server) apiListComments(w http.ResponseWriter, id int64) {
 	comments, err := s.commentRepo.ListByPropertyID(id)
@@ -317,6 +349,12 @@ func (s *Server) apiAddVisit(w http.ResponseWriter, r *http.Request, id int64) {
 			return
 		}
 		apiError(w, fmt.Sprintf("adding visit: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Auto-set visit status to visited
+	if statusErr := s.propRepo.UpdateVisitStatus(id, property.VisitStatusVisited); statusErr != nil {
+		apiError(w, fmt.Sprintf("updating visit status: %v", statusErr), http.StatusInternalServerError)
 		return
 	}
 

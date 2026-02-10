@@ -21,7 +21,7 @@ const insertSQL = `INSERT INTO properties
 	(address, mpr_id, realtor_url, price, bedrooms, bathrooms, sqft, lot_size, year_built, property_type, status, raw_json)
 	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-const selectColumns = `id, address, mpr_id, realtor_url, price, bedrooms, bathrooms, sqft, lot_size, year_built, property_type, status, rating, raw_json, created_at, updated_at`
+const selectColumns = `id, address, mpr_id, realtor_url, price, bedrooms, bathrooms, sqft, lot_size, year_built, property_type, status, rating, visit_status, raw_json, created_at, updated_at`
 
 // Insert adds a new property and returns it with its generated ID.
 func (r *Repository) Insert(p *Property) (*Property, error) {
@@ -61,8 +61,8 @@ func (r *Repository) GetByID(id int64) (*Property, error) {
 
 // ListOptions controls filtering for List.
 type ListOptions struct {
-	MinRating *int
-	Visited   *bool // nil = all, true = visited only, false = not visited only
+	MinRating   *int
+	VisitStatus VisitStatus // empty = all
 }
 
 // List returns all properties, optionally filtered.
@@ -76,12 +76,9 @@ func (r *Repository) List(opts ListOptions) ([]*Property, error) {
 		args = append(args, *opts.MinRating)
 	}
 
-	if opts.Visited != nil {
-		if *opts.Visited {
-			conditions = append(conditions, "id IN (SELECT DISTINCT property_id FROM visits)")
-		} else {
-			conditions = append(conditions, "id NOT IN (SELECT DISTINCT property_id FROM visits)")
-		}
+	if opts.VisitStatus != "" {
+		conditions = append(conditions, "visit_status = ?")
+		args = append(args, string(opts.VisitStatus))
 	}
 
 	if len(conditions) > 0 {
@@ -128,6 +125,31 @@ func (r *Repository) UpdateRating(id int64, rating int) error {
 	)
 	if err != nil {
 		return fmt.Errorf("updating rating: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("checking rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("property %d not found", id)
+	}
+
+	return nil
+}
+
+// UpdateVisitStatus sets the visit status for a property.
+func (r *Repository) UpdateVisitStatus(id int64, status VisitStatus) error {
+	if !ValidVisitStatus(string(status)) {
+		return fmt.Errorf("invalid visit status: %s", status)
+	}
+
+	result, err := r.db.Exec(
+		"UPDATE properties SET visit_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+		string(status), id,
+	)
+	if err != nil {
+		return fmt.Errorf("updating visit status: %w", err)
 	}
 
 	rows, err := result.RowsAffected()

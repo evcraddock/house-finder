@@ -40,8 +40,8 @@ type ShowResponse struct {
 
 // ListOptions controls filtering for ListProperties.
 type ListOptions struct {
-	MinRating int
-	Visited   *bool // nil = all, true = visited, false = not visited
+	MinRating   int
+	VisitStatus string // not_visited, want_to_visit, visited (empty = all)
 }
 
 // ListProperties returns all properties, optionally filtered.
@@ -51,8 +51,8 @@ func (c *Client) ListProperties(opts ListOptions) ([]*property.Property, error) 
 	if opts.MinRating > 0 {
 		params = append(params, fmt.Sprintf("min_rating=%d", opts.MinRating))
 	}
-	if opts.Visited != nil {
-		params = append(params, fmt.Sprintf("visited=%v", *opts.Visited))
+	if opts.VisitStatus != "" {
+		params = append(params, fmt.Sprintf("visit_status=%s", opts.VisitStatus))
 	}
 	if len(params) > 0 {
 		path += "?" + strings.Join(params, "&")
@@ -215,7 +215,7 @@ func (c *Client) do(req *http.Request, result interface{}) error {
 type EmailRequest struct {
 	PropertyIDs []int64 `json:"property_ids,omitempty"`
 	MinRating   *int    `json:"min_rating,omitempty"`
-	Visited     *bool   `json:"visited,omitempty"`
+	VisitStatus string  `json:"visit_status,omitempty"`
 	DryRun      bool    `json:"dry_run"`
 }
 

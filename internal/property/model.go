@@ -7,6 +7,24 @@ import (
 	"time"
 )
 
+// VisitStatus represents where a property is in the visit workflow.
+type VisitStatus string
+
+const (
+	VisitStatusNotVisited  VisitStatus = "not_visited"
+	VisitStatusWantToVisit VisitStatus = "want_to_visit"
+	VisitStatusVisited     VisitStatus = "visited"
+)
+
+// ValidVisitStatus returns true if s is a known visit status.
+func ValidVisitStatus(s string) bool {
+	switch VisitStatus(s) {
+	case VisitStatusNotVisited, VisitStatusWantToVisit, VisitStatusVisited:
+		return true
+	}
+	return false
+}
+
 // Property represents a tracked house listing.
 type Property struct {
 	ID           int64           `json:"id"`
@@ -22,6 +40,7 @@ type Property struct {
 	PropertyType *string         `json:"property_type,omitempty"`
 	Status       *string         `json:"status,omitempty"`
 	Rating       *int64          `json:"rating,omitempty"`
+	VisitStatus  VisitStatus     `json:"visit_status"`
 	RawJSON      json.RawMessage `json:"raw_json"`
 	CreatedAt    time.Time       `json:"created_at"`
 	UpdatedAt    time.Time       `json:"updated_at"`
@@ -35,11 +54,12 @@ func scanProperty(row interface{ Scan(...interface{}) error }) (*Property, error
 	var propertyType, status sql.NullString
 	var rawJSON string
 
+	var visitStatus string
 	err := row.Scan(
 		&p.ID, &p.Address, &p.MprID, &p.RealtorURL,
 		&price, &bedrooms, &bathrooms, &sqft, &lotSize,
 		&yearBuilt, &propertyType, &status, &rating,
-		&rawJSON, &p.CreatedAt, &p.UpdatedAt,
+		&visitStatus, &rawJSON, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -71,6 +91,10 @@ func scanProperty(row interface{ Scan(...interface{}) error }) (*Property, error
 	}
 	if rating.Valid {
 		p.Rating = &rating.Int64
+	}
+	p.VisitStatus = VisitStatus(visitStatus)
+	if p.VisitStatus == "" {
+		p.VisitStatus = VisitStatusNotVisited
 	}
 	p.RawJSON = json.RawMessage(rawJSON)
 
