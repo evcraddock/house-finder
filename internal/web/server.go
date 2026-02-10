@@ -128,6 +128,12 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 		render:   s.render,
 	}
 
+	// Health check (no auth)
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"status":"ok"}`) //nolint:errcheck // health check write failure is unrecoverable
+	})
+
 	// Public routes
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticContent))))
 	mux.HandleFunc("/login", ah.handleLoginPage)

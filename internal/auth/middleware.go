@@ -147,6 +147,9 @@ func RequireAPIKey(apiKeys *APIKeyStore, sessions *SessionStore, next http.Handl
 }
 
 func isPublicPath(path string) bool {
+	if path == "/health" {
+		return true
+	}
 	if path == "/login" || path == "/auth/login" || path == "/auth/verify" || path == "/auth/logout" {
 		return true
 	}
