@@ -61,6 +61,19 @@
                 {{end}}
             </tbody>
         </table>
+        <div class="property-cards">
+            {{range .Properties}}
+            <a href="/property/{{.ID}}" class="property-card {{ratingClass .Rating}}">
+                {{if .PhotoURL}}<img src="{{.PhotoURL}}" alt="" class="property-card-thumb">{{end}}
+                <div class="property-card-info">
+                    <div class="property-card-rating">{{formatRating .Rating}}</div>
+                    <div class="property-card-address">{{.Address}}</div>
+                    <div class="property-card-price">{{formatPrice .Price}}</div>
+                    <div class="property-card-details">{{formatFloat .Bedrooms}} bed · {{formatFloat .Bathrooms}} bath · {{formatInt .Sqft}} sqft</div>
+                </div>
+            </a>
+            {{end}}
+        </div>
         {{else}}
         <div class="empty">No properties in this tab.</div>
         {{end}}
