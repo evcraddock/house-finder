@@ -24,9 +24,7 @@ func (m *Mailer) SendMagicLink(addr, token string) (string, error) {
 
 	if m.config.DevMode {
 		slog.Info("magic link generated", "email", addr, "link", link)
-		if !m.smtpConfigured() {
-			return link, nil
-		}
+		return link, nil
 	}
 
 	subject := "House Finder — Login Link"
@@ -48,9 +46,7 @@ func (m *Mailer) SendCLIMagicLink(addr, token string) (string, error) {
 
 	if m.config.DevMode {
 		slog.Info("cli magic link generated", "email", addr, "link", link)
-		if !m.smtpConfigured() {
-			return link, nil
-		}
+		return link, nil
 	}
 
 	subject := "House Finder — CLI Login Link"
@@ -64,10 +60,6 @@ func (m *Mailer) SendCLIMagicLink(addr, token string) (string, error) {
 	}
 
 	return link, nil
-}
-
-func (m *Mailer) smtpConfigured() bool {
-	return m.config.SMTPHost != "" && m.config.SMTPFrom != ""
 }
 
 func (m *Mailer) send(to, subject, body string) error {
