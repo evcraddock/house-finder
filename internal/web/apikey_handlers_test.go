@@ -89,7 +89,7 @@ func TestDeleteAPIKey(t *testing.T) {
 	}
 
 	// Verify deleted
-	keys, err := store.List()
+	keys, err := store.List("admin@example.com")
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}

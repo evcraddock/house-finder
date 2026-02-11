@@ -59,12 +59,21 @@ func TestAPIKeyList(t *testing.T) {
 		t.Fatalf("create 2: %v", err)
 	}
 
-	keys, err := store.List()
+	keys, err := store.List("test@example.com")
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
 	if len(keys) != 2 {
 		t.Fatalf("got %d keys, want 2", len(keys))
+	}
+
+	// Other user should see zero keys
+	other, err := store.List("other@example.com")
+	if err != nil {
+		t.Fatalf("list other: %v", err)
+	}
+	if len(other) != 0 {
+		t.Errorf("got %d keys for other user, want 0", len(other))
 	}
 }
 
@@ -76,7 +85,7 @@ func TestAPIKeyDelete(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	if err := store.Delete(key.ID); err != nil {
+	if err := store.Delete(key.ID, "test@example.com"); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 
@@ -90,7 +99,7 @@ func TestAPIKeyDelete(t *testing.T) {
 	}
 
 	// List should be empty
-	keys, err := store.List()
+	keys, err := store.List("test@example.com")
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -102,8 +111,27 @@ func TestAPIKeyDelete(t *testing.T) {
 func TestAPIKeyDeleteNotFound(t *testing.T) {
 	store := testAPIKeyStore(t)
 
-	if err := store.Delete(999); err == nil {
+	if err := store.Delete(999, "test@example.com"); err == nil {
 		t.Fatal("expected error deleting nonexistent key")
+	}
+}
+
+func TestAPIKeyDeleteWrongOwner(t *testing.T) {
+	store := testAPIKeyStore(t)
+
+	_, key, err := store.Create("Owned Key", "alice@example.com")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// Bob should not be able to delete Alice's key
+	if err := store.Delete(key.ID, "bob@example.com"); err == nil {
+		t.Fatal("expected error deleting another user's key")
+	}
+
+	// Alice can delete her own key
+	if err := store.Delete(key.ID, "alice@example.com"); err != nil {
+		t.Fatalf("delete own key: %v", err)
 	}
 }
 
@@ -133,7 +161,7 @@ func TestAPIKeyUpdatesLastUsed(t *testing.T) {
 	}
 
 	// Before validation, last_used_at should be nil
-	keys, err := store.List()
+	keys, err := store.List("test@example.com")
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -146,7 +174,7 @@ func TestAPIKeyUpdatesLastUsed(t *testing.T) {
 		t.Fatalf("validate: %v", err)
 	}
 
-	keys, err = store.List()
+	keys, err = store.List("test@example.com")
 	if err != nil {
 		t.Fatalf("list after use: %v", err)
 	}

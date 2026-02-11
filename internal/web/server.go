@@ -160,7 +160,7 @@ func NewServer(db *sql.DB, authCfg auth.Config, mlsClient ...*mls.Client) (*Serv
 	}
 
 	// API key management routes (session-protected via RequireAPIKey middleware)
-	akh := &apikeyHandlers{apiKeys: apiKeys, sessions: sessions}
+	akh := &apikeyHandlers{apiKeys: apiKeys}
 	mux.HandleFunc("/api/keys", akh.handleAPIKeysRoute)
 	mux.HandleFunc("/api/keys/", akh.handleAPIKeysRoute)
 
