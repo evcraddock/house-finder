@@ -64,10 +64,11 @@ func (s *APIKeyStore) Create(name, email string) (string, *APIKey, error) {
 	return raw, key, nil
 }
 
-// List returns all API keys (without the raw key).
-func (s *APIKeyStore) List() ([]APIKey, error) {
+// List returns API keys for the given email (without the raw key).
+func (s *APIKeyStore) List(email string) ([]APIKey, error) {
 	rows, err := s.db.Query(
-		"SELECT id, name, key_prefix, created_at, last_used_at FROM api_keys ORDER BY created_at DESC",
+		"SELECT id, name, key_prefix, created_at, last_used_at FROM api_keys WHERE email = ? ORDER BY created_at DESC",
+		email,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("querying keys: %w", err)
@@ -90,9 +91,9 @@ func (s *APIKeyStore) List() ([]APIKey, error) {
 	return keys, rows.Err()
 }
 
-// Delete removes an API key by ID.
-func (s *APIKeyStore) Delete(id int64) error {
-	result, err := s.db.Exec("DELETE FROM api_keys WHERE id = ?", id)
+// Delete removes an API key by ID, scoped to the given email.
+func (s *APIKeyStore) Delete(id int64, email string) error {
+	result, err := s.db.Exec("DELETE FROM api_keys WHERE id = ? AND email = ?", id, email)
 	if err != nil {
 		return fmt.Errorf("deleting key: %w", err)
 	}

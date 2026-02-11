@@ -12,8 +12,7 @@ import (
 
 // apikeyHandlers holds API key management HTTP handlers.
 type apikeyHandlers struct {
-	apiKeys  *auth.APIKeyStore
-	sessions *auth.SessionStore
+	apiKeys *auth.APIKeyStore
 }
 
 type apiKeyResponse struct {
@@ -50,9 +49,10 @@ func (h *apikeyHandlers) handleCreateKey(w http.ResponseWriter, r *http.Request)
 		name = "API Key"
 	}
 
-	email, sessionErr := h.sessions.Validate(r)
-	if sessionErr != nil {
-		email = "" // key will have no owner if session is missing
+	email := auth.UserEmailFromContext(r)
+	if email == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
 	rawKey, key, err := h.apiKeys.Create(name, email)
 	if err != nil {
@@ -78,14 +78,20 @@ func (h *apikeyHandlers) handleCreateKey(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// handleListKeys returns all API keys (without raw keys).
+// handleListKeys returns the current user's API keys (without raw keys).
 func (h *apikeyHandlers) handleListKeys(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	keys, err := h.apiKeys.List()
+	email := auth.UserEmailFromContext(r)
+	if email == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	keys, err := h.apiKeys.List(email)
 	if err != nil {
 		slog.Error("listing api keys", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -127,7 +133,13 @@ func (h *apikeyHandlers) handleDeleteKey(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.apiKeys.Delete(id); err != nil {
+	email := auth.UserEmailFromContext(r)
+	if email == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.apiKeys.Delete(id, email); err != nil {
 		slog.Error("deleting api key", "err", err)
 		http.Error(w, "Key not found", http.StatusNotFound)
 		return

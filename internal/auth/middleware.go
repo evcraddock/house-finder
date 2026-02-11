@@ -104,11 +104,12 @@ func RequireAPIKey(apiKeys *APIKeyStore, sessions *SessionStore, next http.Handl
 
 		// API key management endpoints require session auth (web UI), not bearer tokens
 		if isAPIKeyManagementPath(r.URL.Path) {
-			if _, err := sessions.Validate(r); err != nil {
+			email, err := sessions.Validate(r)
+			if err != nil {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(w, WithUserEmail(r, email))
 			return
 		}
 
